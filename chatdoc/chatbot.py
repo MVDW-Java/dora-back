@@ -26,27 +26,26 @@ class Chatbot:
     The chatbot class with a run method
     """
 
+     _chroma_client = chromadb.PersistentClient()
+
+    @property
+    def chroma_client(self) -> chromadb.PersistentClient:
+        """
+        ChromaDB client
+        """
+        return self._chroma_client
+
     def __init__(
         self,
-        file_paths: list[str | Path] | None = None,
+        document_dict: dict[str, Path],
         chat_model_name: str = "gpt-3.5-turbo",
         embedding_model_name: str = "text-embedding-ada-002",
         **kwargs: dict[str, Any],
     ):
-        if file_paths is None:
-            self.file_paths: list[Path] = [Path.cwd() / Path(os.environ["FILE_PATH"])]
-        else:
-            self.file_paths: list[Path] = [Path(file_path) for file_path in file_paths]
-        document_loader = DocumentLoader(
-            model_name=embedding_model_name,
-            file_paths=self.file_paths,
-            **kwargs.get("document_loader_settings", {}),
-        )
-        vector_db = VectorDatabase(
-            embeddings=OpenAIEmbeddings(api_key=Utils.read_api_key(kwargs), model=embedding_model_name),
-            document_loader=document_loader,
-            **kwargs.get("vector_database_settings", {}),
-        )
+        embeddings = OpenAIEmbeddings(api_key=Utils.read_api_key(kwargs), model=embedding_model_name)
+        current_collection = self.chroma_client.get_or_create_collection(collection_name)
+        document_loader = DocumentLoader(model_name=embedding_model_name, file_paths=document_dict.values())
+        current_collection.add_documents(document_loader.split_data, embeddings)
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
         self.chat_model: BaseChatModel = cast(
             BaseChatModel,
@@ -65,6 +64,12 @@ class Chatbot:
             memory=memory,
             return_source_documents=True,
         )
+
+    def send_prompt(self, prompt: str) -> str:
+        """
+        Method to send a prompt to the chatbot
+        """
+        return self.chat_model.send_prompt(prompt)
 
     def run(self, text_width: int = 20, with_proof: bool = False):
         """
