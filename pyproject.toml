@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "rag-test"
+version = "0.0.1"
+description = "A repo to implement RAG using GPT-3.5"
+authors = ["Rohan Sobha <r.r.sobha@student.tudelft.nl>"]
+license = "MIT License"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+langchain = "^0.0.335"
+unstructured = "^0.10.30"
+pypdf = "^3.17.1"
+tiktoken = "^0.5.1"
+chromadb = "^0.4.17"
+openai = "^1.2.4"
+paper-qa = {git = "https://github.com/whitead/paper-qa.git", rev = "updates"}
+
+
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
