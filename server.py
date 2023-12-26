@@ -55,7 +55,6 @@ def identify():
     else:
         response['sessionId'] = str(uuid.uuid4())
         response['message'] = 'Welcome new user: ' + response['sessionId'] + '!'
-    request.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
 
