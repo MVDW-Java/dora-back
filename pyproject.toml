@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "rag-test"
+name = "dora-backend"
 version = "0.0.1"
-description = "A repo to implement RAG using GPT-3.5"
+description = "The backend for Dora"
 authors = ["Rohan Sobha <r.r.sobha@student.tudelft.nl>"]
 license = "MIT License"
 readme = "README.md"
@@ -15,6 +15,7 @@ tiktoken = "^0.5.1"
 chromadb = "^0.4.17"
 openai = "^1.2.4"
 paper-qa = {git = "https://github.com/whitead/paper-qa.git", rev = "updates"}
+flask = "^3.0.0"
 
 
 

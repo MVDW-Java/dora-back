@@ -1,6 +1,6 @@
 from typing import Any, cast
 from pathlib import Path
-import os
+import chromadb
 import time
 
 from langchain.chains import ConversationalRetrievalChain
@@ -16,7 +16,7 @@ from paperqa import Docs # type: ignore
 from .document_loader import DocumentLoader
 from .vector_db import VectorDatabase
 from .citation import Citations
-from .utils import Utils
+from .embedding import Embedding
 
 
 
@@ -26,26 +26,14 @@ class Chatbot:
     The chatbot class with a run method
     """
 
-     _chroma_client = chromadb.PersistentClient()
-
-    @property
-    def chroma_client(self) -> chromadb.PersistentClient:
-        """
-        ChromaDB client
-        """
-        return self._chroma_client
-
     def __init__(
         self,
-        document_dict: dict[str, Path],
-        chat_model_name: str = "gpt-3.5-turbo",
-        embedding_model_name: str = "text-embedding-ada-002",
+        user_id: str,
         **kwargs: dict[str, Any],
     ):
-        embeddings = OpenAIEmbeddings(api_key=Utils.read_api_key(kwargs), model=embedding_model_name)
-        current_collection = self.chroma_client.get_or_create_collection(collection_name)
-        document_loader = DocumentLoader(model_name=embedding_model_name, file_paths=document_dict.values())
-        current_collection.add_documents(document_loader.split_data, embeddings)
+        embedding_fn = Embedding().embedding_function
+        vector_db = VectorDatabase(user_id, embedding_fn)
+
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
         self.chat_model: BaseChatModel = cast(
             BaseChatModel,

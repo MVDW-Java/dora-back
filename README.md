@@ -1,5 +1,5 @@
-# rag-test
-This is a repository that implements RAG using GPT-3.5
+# dora-back
+The backend for Dora
 
 ## How to run the code
 Either clone this project in VSCode or open a new codespace (if you have not been invited into another one).
