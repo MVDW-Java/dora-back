@@ -3,18 +3,16 @@ from pathlib import Path
 import uuid
 import os
 from datetime import date
-from flask import Flask, request, session
+from flask import Flask, request, session, make_response, Response
 from werkzeug.utils import secure_filename
 from chatdoc.document_loader import DocumentLoader
 from chatdoc.vector_db import VectorDatabase
 from chatdoc.embedding import Embedding
 from chatdoc.chatbot import Chatbot
 
-current_env = os.environ.get('CURRENT_ENV', 'DEV')
-
-
-
 app = Flask(__name__)
+
+current_env = os.environ.get('CURRENT_ENV', 'DEV')
 
 match current_env:
     case 'DEV':
@@ -29,15 +27,15 @@ match current_env:
 app.secret_key = str(uuid.uuid4())
 
 @app.route('/', methods=['OPTIONS'])
-def options_backdoor():
+def options_backdoor() -> tuple[str, int]:
     """
     Backdoor for testing CORS.
     """
     request.headers.add('Access-Control-Allow-Origin', '*')
-    return 'OK'
+    return 'OK', 200
 
 @app.route('/identify', methods=['GET'])
-def identify():
+def identify() -> tuple[dict, int] | Response:
     """
     Identifies the user and returns a response object.
 
@@ -55,6 +53,8 @@ def identify():
         session['authenticated'] = True
         session['hasDB'] = False
         response['message'] = 'Welcome new user: ' + session['id'] + '!'
+    response = make_response(response)
+    response.set_cookie('sessionId', session['id'])
     return response
 
 
@@ -78,7 +78,7 @@ async def process_files(document_dict: dict[str, Path], user_id: str) -> None:
 
 
 @app.route('/upload_files', methods=['POST'])
-def upload_files():
+def upload_files() -> tuple[dict, int]:
     """
     Uploads files to the server.
 
@@ -88,7 +88,7 @@ def upload_files():
     """
     
     if 'id' not in session:
-        return "You have not been authenticated, please identify yourself first.", 401
+        return {"error": "You have not been authenticated, please identify yourself first."}, 401
             
     current_date: str = date.today().strftime('%Y-%m-%d')
     prefix: str = request.form['prefix']
@@ -102,13 +102,14 @@ def upload_files():
         unique_file_path = dir_path / Path(unique_file_name)
         full_document_dict[file.name] = unique_file_path
         file.save(unique_file_path)
+    _ = process_files(full_document_dict, session['id'])
     if len(files) == 1:
-        return 'File uploaded successfully!'
-    return str(len(files)) + ' files uploaded successfully!'
+        return {"message": 'File uploaded successfully!'}, 200
+    return {"message": "str(len(files)) + ' files uploaded successfully!"}, 200
    
 
 @app.route('/prompt', methods=['POST'])
-def prompt():
+def prompt() -> tuple[dict, int]:
     """
     This function handles the prompt request from the client.
 
@@ -116,13 +117,13 @@ def prompt():
         tuple: A tuple containing the response message and the HTTP status code.
     """
     if 'id' not in session:
-        return "You have not been authenticated, please identify yourself first.", 401
+        return {"error": "You have not been authenticated, please identify yourself first."}, 401
     if request.json is None:
-        return 'No JSON body received', 400
+        return {"error": "No JSON body received"}, 400
     message = request.json['prompt']
     chatbot = Chatbot(session['id'])
     response = chatbot.send_prompt(message)
-    return response
+    return response, 200
 
 if __name__ == '__main__':
     app.run()

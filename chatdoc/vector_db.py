@@ -46,7 +46,7 @@ class VectorDatabase:
         )
         self.retriever = self.chroma_instance.as_retriever()
 
-    async def add_documents(self, documents: list[Document]):
+    async def add_documents(self, documents: list[Document]) -> None:
         """
         Add multiple documents to the vector database.
 
