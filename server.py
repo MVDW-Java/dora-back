@@ -27,12 +27,13 @@ match current_env:
 app.secret_key = str(uuid.uuid4())
 
 @app.route('/', methods=['OPTIONS'])
-def options_backdoor() -> tuple[str, int]:
+def options_backdoor() -> Response:
     """
     Backdoor for testing CORS.
     """
-    request.headers.add('Access-Control-Allow-Origin', '*')
-    return 'OK', 200
+    response = make_response('OK')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 @app.route('/identify', methods=['GET'])
 def identify() -> tuple[dict, int] | Response:
@@ -78,7 +79,7 @@ async def process_files(document_dict: dict[str, Path], user_id: str) -> None:
 
 
 @app.route('/upload_files', methods=['POST'])
-def upload_files() -> tuple[dict, int]:
+def upload_files() -> tuple[dict, int] | Response:
     """
     Uploads files to the server.
 
@@ -104,8 +105,12 @@ def upload_files() -> tuple[dict, int]:
         file.save(unique_file_path)
     _ = process_files(full_document_dict, session['id'])
     if len(files) == 1:
-        return {"message": 'File uploaded successfully!'}, 200
-    return {"message": "str(len(files)) + ' files uploaded successfully!"}, 200
+        response = make_response({"message": 'File uploaded successfully!'}, 200)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    response = make_response({"message": "str(len(files)) + ' files uploaded successfully!"}, 200)
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
    
 
 @app.route('/prompt', methods=['POST'])
