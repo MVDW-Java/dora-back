@@ -4,7 +4,7 @@ import uuid
 import os
 from datetime import date
 from flask import Flask, request, session
-from werkzeug.datastructures import FileStorage
+from werkzeug.utils import secure_filename
 from chatdoc.document_loader import DocumentLoader
 from chatdoc.vector_db import VectorDatabase
 from chatdoc.embedding import Embedding
@@ -91,14 +91,17 @@ def upload_files():
         return "You have not been authenticated, please identify yourself first.", 401
             
     current_date: str = date.today().strftime('%Y-%m-%d')
-    files = request.files['files']
+    prefix: str = request.form['prefix']
+    files = {k.lstrip(prefix):v for k,v in request.files.items() if k.startswith(prefix)}
     dir_path: Path = Path(tempfile.gettempdir()) / Path(str(session['id']))
     full_document_dict = {}
-    for file in files:
-        unique_file_name = f"{file.stem}_{current_date}_{file.suffix}"
+    for filename, file in files.items():
+        secure_file_name = secure_filename(filename)
+        secure_path = Path(secure_file_name)
+        unique_file_name = f"{secure_path.stem}_{current_date}_{secure_path.suffix}"
         unique_file_path = dir_path / Path(unique_file_name)
         full_document_dict[file.name] = unique_file_path
-        file.save()
+        file.save(unique_file_path)
     if len(files) == 1:
         return 'File uploaded successfully!'
     return str(len(files)) + ' files uploaded successfully!'
