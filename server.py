@@ -8,6 +8,7 @@ from werkzeug.datastructures import FileStorage
 from chatdoc.document_loader import DocumentLoader
 from chatdoc.vector_db import VectorDatabase
 from chatdoc.embedding import Embedding
+from chatdoc.chatbot import Chatbot
 
 current_env = os.environ.get('CURRENT_ENV', 'DEV')
 
@@ -43,18 +44,17 @@ def identify():
     Returns:
         dict: A response object containing the sessionId and message.
     """
-    response = {
-            "sessionId": "",
-            "message": "",
-            "hasDB": False,
-        }
+    response = {}
     if 'id' in session and isinstance(session['id'], str):
-        session_id: str = session['id']
-        response['sessionId'] = session_id
-        response['message'] = 'Welcome back user: ' + session_id + '!'
+        response['message'] = 'Welcome back user: ' + session['id'] + '!'
+        response['sessionId'] = session['id']
+        response['authenticated'] = True
+        response['hasDB'] = session['hasDB']
     else:
-        response['sessionId'] = str(uuid.uuid4())
-        response['message'] = 'Welcome new user: ' + response['sessionId'] + '!'
+        session['id'] = str(uuid.uuid4())
+        session['authenticated'] = True
+        session['hasDB'] = False
+        response['message'] = 'Welcome new user: ' + session['id'] + '!'
     return response
 
 
@@ -102,23 +102,24 @@ def upload_files():
     if len(files) == 1:
         return 'File uploaded successfully!'
     return str(len(files)) + ' files uploaded successfully!'
-    
+   
 
-@app.route('/message', methods=['POST'])
-def save_message():
+@app.route('/prompt', methods=['POST'])
+def prompt():
     """
-    Save the received message to a file.
+    This function handles the prompt request from the client.
 
     Returns:
-        str: A success message if the message is saved successfully.
-        str: An error message if no JSON body is received.
+        tuple: A tuple containing the response message and the HTTP status code.
     """
-    if request.json is not None:
-        message = request.json['message']
-        with open('llm.txt', 'a') as file:
-            file.write(message + '\n')
-        return 'Message saved successfully!'
-    return 'No JSON body received', 400
+    if 'id' not in session:
+        return "You have not been authenticated, please identify yourself first.", 401
+    if request.json is None:
+        return 'No JSON body received', 400
+    message = request.json['prompt']
+    chatbot = Chatbot(session['id'])
+    response = chatbot.send_prompt(message)
+    return response
 
 if __name__ == '__main__':
     app.run()

@@ -1,22 +1,15 @@
-from typing import Any, cast
-from pathlib import Path
-import chromadb
+from typing import Any
 import time
 
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models.base import BaseChatModel
-from langchain.chat_models.openai import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 
-from langchain.embeddings.openai import OpenAIEmbeddings
 
-
-from paperqa import Docs # type: ignore
-
-from .document_loader import DocumentLoader
 from .vector_db import VectorDatabase
 from .citation import Citations
 from .embedding import Embedding
+from .chat_model import ChatModel
 
 
 
@@ -29,35 +22,30 @@ class Chatbot:
     def __init__(
         self,
         user_id: str,
-        **kwargs: dict[str, Any],
     ):
-        embedding_fn = Embedding().embedding_function
-        vector_db = VectorDatabase(user_id, embedding_fn)
-
-        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
-        self.chat_model: BaseChatModel = cast(
-            BaseChatModel,
-            kwargs.get(
-                "custom_chat_model",
-                ChatOpenAI(
-                    api_key=Utils.read_api_key(kwargs),
-                    temperature=0,
-                    model=cast(str, kwargs.get("chat_model_name", chat_model_name)),
-                ),
-            ),
-        )
+        self.user_id = user_id
+        self.embedding_fn = Embedding().embedding_function
+        self.vector_db = VectorDatabase(self.user_id, self.embedding_fn)
+        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
+        self.chat_model: BaseChatModel = ChatModel().chat_model
         self.chatQA = ConversationalRetrievalChain.from_llm(  # pylint: disable=invalid-name
             llm=self.chat_model,
-            retriever=vector_db.vector_store.as_retriever(),
-            memory=memory,
+            retriever=self.vector_db.retriever,
+            memory=self.memory,
             return_source_documents=True,
         )
+        self.chat_history: list[tuple[str, str, Citations]] = []
+        self.last_n_messages = 5  # TODO: Change into environment variable
 
-    def send_prompt(self, prompt: str) -> str:
+    def send_prompt(self, prompt: str) -> dict[str, Any]:
         """
         Method to send a prompt to the chatbot
         """
-        return self.chat_model.send_prompt(prompt)
+        result = self.chatQA({"question": prompt, "chat_history": self.chat_history[-self.last_n_messages:]})
+        citations: Citations = Citations(set(), False)
+        citations.get_unique_citations(result["source_documents"])
+        self.chat_history.append((prompt, result["answer"], citations))
+        return result
 
     def run(self, text_width: int = 20, with_proof: bool = False):
         """

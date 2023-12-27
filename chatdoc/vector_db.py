@@ -44,6 +44,7 @@ class VectorDatabase:
             client=self.chroma_client,
             embedding_function=embedding_fn,
         )
+        self.retriever = self.chroma_instance.as_retriever()
 
     async def add_documents(self, documents: list[Document]):
         """

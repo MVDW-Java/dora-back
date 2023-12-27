@@ -1,7 +1,7 @@
-import os
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.embeddings.base import Embeddings
+from .utils import Utils
 
 class Embedding:
     """
@@ -21,35 +21,17 @@ class Embedding:
           the vendor name, embedding model name, and loading the embedding function.
     """
 
-    def _get_env_variable(self, variable_name: str) -> str:
-        """
-        Retrieves the value of an environment variable.
-
-        Args:
-            variable_name (str): The name of the environment variable.
-
-        Returns:
-            str: The value of the environment variable.
-
-        Raises:
-            ValueError: If the environment variable is not set.
-        """
-        if variable_name not in os.environ:
-            raise ValueError(f"{variable_name} not set in environment")
-        else:
-            return os.environ[variable_name]
-
     def _set_vendor_name(self):
         """
         Sets the vendor name based on the environment variable.
         """
-        self.vendor_name = self._get_env_variable("EMBEDDING_VENDOR_NAME")
+        self.vendor_name = Utils.get_env_variable("EMBEDDING_VENDOR_NAME")
 
     def _set_embedding_model_name(self):
         """
         Sets the embedding model name based on the environment variable.
         """
-        self.embedding_model_name = self._get_env_variable("EMBEDDING_MODEL_NAME")
+        self.embedding_model_name = Utils.get_env_variable("EMBEDDING_MODEL_NAME")
 
     def _load_embedding_function(self) -> Embeddings:
         """
@@ -64,10 +46,10 @@ class Embedding:
         match self.vendor_name:
             case "openai":
                 return OpenAIEmbeddings(
-                   api_key=self._get_env_variable("OPENAI_API_KEY"), model=self.embedding_model_name)
+                   api_key=Utils.get_env_variable("OPENAI_API_KEY"), model=self.embedding_model_name)
             case "huggingface":
                 return HuggingFaceEmbeddings(
-                    api_key=self._get_env_variable("HUGGINGFACE_API_KEY"), model=self.embedding_model_name)
+                    api_key=Utils.get_env_variable("HUGGINGFACE_API_KEY"), model=self.embedding_model_name)
             case _:
                 raise ValueError("Invalid vendor name")
 
