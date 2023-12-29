@@ -1,6 +1,11 @@
 import os
 
+
 class Utils:
+    """
+    A utility class that provides various helper functions.
+    """
+
     @classmethod
     def get_env_variable(cls, variable_name: str) -> str:
         """

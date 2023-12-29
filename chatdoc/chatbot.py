@@ -12,8 +12,6 @@ from .embedding import Embedding
 from .chat_model import ChatModel
 
 
-
-
 class Chatbot:
     """
     The chatbot class with a run method
@@ -22,10 +20,9 @@ class Chatbot:
     def __init__(
         self,
         user_id: str,
-    ):
-        self.user_id = user_id
+    ) -> None:
         self.embedding_fn = Embedding().embedding_function
-        self.vector_db = VectorDatabase(self.user_id, self.embedding_fn)
+        self.vector_db = VectorDatabase(user_id, self.embedding_fn)
         self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
         self.chat_model: BaseChatModel = ChatModel().chat_model
         self.chatQA = ConversationalRetrievalChain.from_llm(  # pylint: disable=invalid-name
@@ -41,7 +38,12 @@ class Chatbot:
         """
         Method to send a prompt to the chatbot
         """
-        result = self.chatQA({"question": prompt, "chat_history": self.chat_history[-self.last_n_messages:]})
+        result = self.chatQA(
+            {
+                "question": prompt,
+                "chat_history": self.chat_history[-self.last_n_messages :],
+            }
+        )
         citations: Citations = Citations(set(), False)
         citations.get_unique_citations(result["source_documents"])
         self.chat_history.append((prompt, result["answer"], citations))
@@ -66,4 +68,3 @@ class Chatbot:
                 citations.print_citations()
             end = time.time()
             print(f"Time: {end - start:.2f}s", flush=True)
-   
