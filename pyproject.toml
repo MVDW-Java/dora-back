@@ -17,6 +17,7 @@ openai = "^1.2.4"
 paper-qa = {git = "https://github.com/whitead/paper-qa.git", rev = "updates"}
 flask = "^3.0.0"
 flask-cors = "^4.0.0"
+pytest = "^7.4.3"
 
 
 
