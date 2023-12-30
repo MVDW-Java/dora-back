@@ -1,5 +1,6 @@
-import pytest # pylint: disable=unused-import
+import pytest  # pylint: disable=unused-import
 from chatdoc.citation import BaseCitation, ProofCitation
+
 
 def test_base_citation():
     """
@@ -12,6 +13,7 @@ def test_base_citation():
     assert base_citation.source == "Source"
     assert base_citation.page == 1
     assert base_citation.format_citation_text() == " - Source on page 1"
+
 
 def test_proof_citation():
     """
