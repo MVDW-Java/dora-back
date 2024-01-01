@@ -4,12 +4,12 @@ from pathlib import Path
 import uuid
 import os
 import asyncio
-from datetime import date
+
 import logging
 
 # third party imports
 from flask import Flask, request, session, make_response, Response
-from werkzeug.utils import secure_filename
+
 from flask_cors import CORS
 
 # local imports
@@ -18,6 +18,7 @@ from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory
 from chatdoc.vector_db import VectorDatabase
 from chatdoc.embed.embedding_factory import EmbeddingFactory
 from chatdoc.chatbot import Chatbot
+from chatdoc.utils import Utils
 
 app = Flask(__name__)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
@@ -144,16 +145,13 @@ def upload_files() -> Response:
 
     if "id" not in session:
         return make_response({"error": "You have not been authenticated, please identify yourself first."}, 401)
-    current_date: str = date.today().strftime("%Y-%m-%d")
     prefix: str = request.form["prefix"]
     files = {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
     dir_path: Path = Path(tempfile.gettempdir()) / Path(str(session["id"]))
     os.makedirs(dir_path, exist_ok=True)
     full_document_dict = {}
     for filename, file in files.items():
-        secure_file_name = secure_filename(filename)
-        secure_path = Path(secure_file_name)
-        unique_file_name = f"{secure_path.stem}_{current_date}_{secure_path.suffix}"
+        unique_file_name = Utils.get_unique_filename(filename)
         unique_file_path = dir_path / Path(unique_file_name)
         full_document_dict[unique_file_name] = unique_file_path
         file.save(unique_file_path)

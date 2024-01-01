@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from abc import abstractmethod
 from typing import Any
+from pathlib import Path
+from chatdoc.utils import Utils
 
 
 @dataclass(frozen=True)
@@ -84,7 +86,8 @@ class Citations:
         Iterate through the list of source documents and extract the source, page number, and proof for each document. Then, add the citation to the collection of unique citations.
         """
         for source_document in source_documents:
-            source = source_document.metadata["source"]
+            raw_source = source_document.metadata["source"]
+            source = Utils.remove_date_from_filename(Path(raw_source).name)
             page = source_document.metadata["page"] + 1
             proof = source_document.page_content
             self.add_citation(source, page, proof)
