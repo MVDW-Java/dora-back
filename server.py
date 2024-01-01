@@ -160,7 +160,7 @@ def upload_files() -> Response:
     loop = asyncio.new_event_loop()
     loop.run_until_complete(process_files(full_document_dict, session["id"]))
     response = make_response(
-        {"message": f"{str(len(files))} file{'s' if len(files) != 0 else ''} uploaded successfully!"}, 200
+        {"message": f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!"}, 200
     )
     return response
 
