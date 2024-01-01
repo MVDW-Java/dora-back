@@ -56,9 +56,9 @@ async def process_files(document_dict: dict[str, Path], user_id: str) -> None:
     """
     loader_factory = DocumentLoaderFactory()
     document_loader = DocumentLoader(document_dict, loader_factory)
-    documents = document_loader.text_splitter.split_documents(document_loader.document_iterator)
     embedding_fn = EmbeddingFactory().create()
     vector_db = VectorDatabase(user_id, embedding_fn)
+    documents = document_loader.text_splitter.split_documents(document_loader.document_iterator)
     app.logger.log(level=logging.INFO, msg="Adding documents to vector database...")
     await vector_db.add_documents(documents)
 

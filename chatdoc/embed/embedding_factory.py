@@ -62,4 +62,4 @@ class EmbeddingFactory:
             if api_key_var is None:
                 raise ValueError(f"No API key environment variable available for vendor name {self.vendor_name}")
             api_key = Utils.get_env_variable(api_key_var)
-        return embedding_class(api_key=api_key, model=self.embedding_model_name)
+        return embedding_class(api_key=api_key, model=self.embedding_model_name, disallowed_special=())

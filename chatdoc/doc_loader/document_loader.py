@@ -1,5 +1,6 @@
 from pathlib import Path
 from itertools import chain
+from logging import Logger, INFO
 import os
 
 from langchain.text_splitter import TokenTextSplitter, TextSplitter
@@ -26,8 +27,11 @@ class DocumentLoader:
 
     """
 
-    def __init__(self, document_dict: dict[str, Path], loader_factory: DocumentLoaderFactory):
+    def __init__(
+        self, document_dict: dict[str, Path], loader_factory: DocumentLoaderFactory, logger: Logger | None = None
+    ):
         self.loader_factory = loader_factory
+        self.logger = logger if logger else Logger("DocumentLoader")
         self.loaders = self.initialize_loaders(document_dict)
         self.document_iterator = self.chain_document_iterators()
         self.text_splitter: TextSplitter = self.load_token_text_splitter()
@@ -80,6 +84,6 @@ class DocumentLoader:
         if "CHUNK_SIZE" in os.environ:
             chunk_size = int(os.environ["CHUNK_SIZE"])
         else:
-            print("No chunk size specified, defaulting to 1000")  # TODO: replace with logging
+            self.logger.log(level=INFO, msg="No chunk size specified, defaulting to 1000")
             chunk_size = 1000
-        return TokenTextSplitter(chunk_size=chunk_size, chunk_overlap=0, allowed_special={"<|endoftext|>"})
+        return TokenTextSplitter(chunk_size=chunk_size, chunk_overlap=0, disallowed_special=())

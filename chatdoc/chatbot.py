@@ -6,7 +6,7 @@ from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationBufferMemory
 
 from chatdoc.vector_db import VectorDatabase
-from chatdoc.citation import Citations
+from chatdoc.citation import Citations, BaseCitation
 from chatdoc.embed.embedding_factory import EmbeddingFactory
 from chatdoc.chat_model import ChatModel
 
@@ -23,28 +23,27 @@ class Chatbot:
         vector_database: VectorDatabase | None = None,
         memory: ConversationBufferMemory | None = None,
         chat_model: BaseChatModel | None = None,
-        retrieval_chain: ConversationalRetrievalChain | None = None,
         last_n_messages: int = 5,
     ) -> None:
         self._embedding_factory = embedding_factory if embedding_factory else EmbeddingFactory()
         self._vector_database = (
             vector_database if vector_database else VectorDatabase(user_id, self._embedding_factory.create())
         )
-        self._memory = memory if memory else ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        self._memory = (
+            memory
+            if memory
+            else ConversationBufferMemory(memory_key="chat_history", output_key="answer", return_messages=True)
+        )
         self.last_n_messages = last_n_messages
         self._chat_model = chat_model if chat_model else ChatModel().chat_model
-        self._retrieval_chain = (
-            retrieval_chain
-            if retrieval_chain
-            else ConversationalRetrievalChain.from_llm(
-                llm=self._chat_model,
-                retriever=self._vector_database.retriever,
-                memory=self._memory,
-                return_source_documents=True,
-            )
+        self._retrieval_chain = ConversationalRetrievalChain.from_llm(
+            llm=self._chat_model,
+            retriever=self._vector_database.retriever,
+            memory=self._memory,
+            return_source_documents=True,
         )
         self.embedding_fn = self._embedding_factory.create()
-        self.chat_history: list[tuple[str, str, Citations]] = []
+        self.chat_history: list[tuple[str, str, list[BaseCitation]]] = []
 
     def send_prompt(self, prompt: str) -> dict[str, Any]:
         """
@@ -53,13 +52,19 @@ class Chatbot:
         result = self._retrieval_chain(
             {
                 "question": prompt,
-                "chat_history": self.chat_history[-self.last_n_messages :],
-            }
+                "chat_history": self.chat_history,
+            },
         )
         citations: Citations = Citations(set(), False)
         citations.get_unique_citations(result["source_documents"])
-        self.chat_history.append((prompt, result["answer"], citations))
-        return result
+        citations_list = list(citations.citations)
+        self.chat_history.append((prompt, result["answer"], citations_list))
+        response = {
+            "answer": result["answer"],
+            "citations": citations_list,
+            "chat_history": self.chat_history,
+        }
+        return response
 
     def run(self, text_width: int = 20, with_proof: bool = False):
         """

@@ -55,6 +55,15 @@ class Citations:
     citations: set[Citation]
     with_proof: bool
 
+    def __dict__(self):
+        """
+        Return the citations as a dictionary.
+
+        Returns:
+            dict: The citations as a dictionary.
+        """
+        return {"citations": list(self.citations), "with_proof": self.with_proof}
+
     def add_citation(self, source: str, page: int, proof: str):
         """
         Add a citation to the set of citations.
