@@ -13,6 +13,7 @@ class VectorDatabase:
     """
     The VectorDatabase class that creates a ChromaDB store locally
     """
+
     _instance = None
 
     _chroma_db_client = None
@@ -24,18 +25,17 @@ class VectorDatabase:
         """
         if self._chroma_db_client is not None:
             return self._chroma_db_client
-        dora_env = os.environ.get('DORA_ENV')
+        dora_env = os.environ.get("CURRENT_ENV")
         match dora_env:
-            case 'DEV', 'TST':
+            case "DEV" | "TST":
                 self._chroma_db_client = PersistentClient()
-            case 'PROD':
+            case "PROD":
                 # Connect to ChromaDB in the cloud
                 # Add code here to connect to ChromaDB in the cloud
                 raise NotImplementedError("ChromaDB in the cloud not implemented yet")
             case _:
-                raise ValueError("Invalid environment")
+                raise ValueError("Invalid DORA environment")
         return self._chroma_db_client
-
 
     def __init__(self, collection_name: str, embedding_fn: Embeddings) -> None:
         self.collection_name = collection_name
@@ -51,7 +51,7 @@ class VectorDatabase:
         Add multiple documents to the vector database.
 
         Args:
-            documents (list[Document]): 
+            documents (list[Document]):
                 A list of Document objects to be added when this endpoint is called from `server.py`.
 
         Returns:

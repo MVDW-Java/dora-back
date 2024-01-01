@@ -5,6 +5,7 @@ import uuid
 import os
 import asyncio
 from datetime import date
+import logging
 
 # third party imports
 from flask import Flask, request, session, make_response, Response
@@ -25,7 +26,7 @@ app.config["SESSION_COOKIE_SECURE"] = True
 current_env = os.environ.get("CURRENT_ENV", "DEV")
 
 list_of_allowed_origins: list[str] = []
-
+app.logger.level = logging.INFO
 match current_env:
     case "DEV":
         CORS(app)
@@ -33,9 +34,9 @@ match current_env:
             list_of_allowed_origins.append(os.environ["DEV_URL"])
         else:
             raise ValueError("DEV_URL environment variable not set")
-        print("Running in development mode")
+        app.logger.log(level=logging.INFO, msg="Running in development mode")
     case "PROD":
-        print("Running in production mode")
+        app.logger.log(level=logging.INFO, msg="Running in production mode")
     case _:
         raise ValueError("Invalid environment variable set for CURRENT_ENV")
 
@@ -58,7 +59,7 @@ async def process_files(document_dict: dict[str, Path], user_id: str) -> None:
     documents = document_loader.text_splitter.split_documents(document_loader.document_iterator)
     embedding_fn = EmbeddingFactory().create()
     vector_db = VectorDatabase(user_id, embedding_fn)
-    print("Adding documents to vector database...")
+    app.logger.log(level=logging.INFO, msg="Adding documents to vector database...")
     await vector_db.add_documents(documents)
 
 
