@@ -19,25 +19,38 @@ class Chatbot:
     def __init__(
         self,
         user_id: str,
+        embedding_factory: EmbeddingFactory | None = None,
+        vector_database: VectorDatabase | None = None,
+        memory: ConversationBufferMemory | None = None,
+        chat_model: BaseChatModel | None = None,
+        retrieval_chain: ConversationalRetrievalChain | None = None,
+        last_n_messages: int = 5,
     ) -> None:
-        self.embedding_fn = EmbeddingFactory().create()
-        self.vector_db = VectorDatabase(user_id, self.embedding_fn)
-        self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
-        self.chat_model: BaseChatModel = ChatModel().chat_model
-        self.chatQA = ConversationalRetrievalChain.from_llm(  # pylint: disable=invalid-name
-            llm=self.chat_model,
-            retriever=self.vector_db.retriever,
-            memory=self.memory,
-            return_source_documents=True,
+        self._embedding_factory = embedding_factory if embedding_factory else EmbeddingFactory()
+        self._vector_database = (
+            vector_database if vector_database else VectorDatabase(user_id, self._embedding_factory.create())
         )
+        self._memory = memory if memory else ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        self.last_n_messages = last_n_messages
+        self._chat_model = chat_model if chat_model else ChatModel().chat_model
+        self._retrieval_chain = (
+            retrieval_chain
+            if retrieval_chain
+            else ConversationalRetrievalChain.from_llm(
+                llm=self._chat_model,
+                retriever=self._vector_database.retriever,
+                memory=self._memory,
+                return_source_documents=True,
+            )
+        )
+        self.embedding_fn = self._embedding_factory.create()
         self.chat_history: list[tuple[str, str, Citations]] = []
-        self.last_n_messages = 5  # TODO: Change into environment variable
 
     def send_prompt(self, prompt: str) -> dict[str, Any]:
         """
         Method to send a prompt to the chatbot
         """
-        result = self.chatQA(
+        result = self._retrieval_chain(
             {
                 "question": prompt,
                 "chat_history": self.chat_history[-self.last_n_messages :],
@@ -59,7 +72,7 @@ class Chatbot:
             start = time.time()
             print(f"Initial question:\n {qry:<{text_width}}", flush=True)
             if qry != "done":
-                response = self.chatQA({"question": qry, "chat_history": chat_history})
+                response = self._retrieval_chain({"question": qry, "chat_history": chat_history})
                 print(f"Answer:\n {response['answer']:<{text_width}}", flush=True)
                 print("SOURCES: ", flush=True)
                 citations: Citations = Citations(set(), with_proof)
