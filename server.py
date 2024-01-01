@@ -12,9 +12,9 @@ from flask_cors import CORS
 
 # local imports
 from chatdoc.doc_loader.document_loader import DocumentLoader
-from chatdoc.doc_loader.loader_factory import LoaderFactory
+from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory
 from chatdoc.vector_db import VectorDatabase
-from chatdoc.embedding import Embedding
+from chatdoc.embed.embedding_factory import EmbeddingFactory
 from chatdoc.chatbot import Chatbot
 
 app = Flask(__name__)
@@ -49,10 +49,10 @@ async def process_files(document_dict: dict[str, Path], user_id: str) -> None:
     Returns:
         None
     """
-    loader_factory = LoaderFactory()
+    loader_factory = DocumentLoaderFactory()
     document_loader = DocumentLoader(document_dict, loader_factory)
     documents = document_loader.text_splitter.split_documents(document_loader.document_iterator)
-    embedding_fn = Embedding().embedding_function
+    embedding_fn = EmbeddingFactory().create()
     vector_db = VectorDatabase(user_id, embedding_fn)
     print("Adding documents to vector database...")
     await vector_db.add_documents(documents)
