@@ -1,22 +1,12 @@
-from unittest.mock import patch, create_autospec
+from unittest.mock import MagicMock
 from collections.abc import Iterator
 import pytest
-from chatdoc.doc_loader.loader_factory import LoaderFactory, PyPDFLoader, Docx2txtLoader
-
-
-@pytest.fixture(name="loader_factory")
-def loader_factory_fixture() -> type[LoaderFactory]:
-    """
-    Fixture function that returns the LoaderFactory class.
-
-    Returns:
-        type[LoaderFactory]: The LoaderFactory class.
-    """
-    return LoaderFactory
+from langchain.document_loaders import PyPDFLoader, Docx2txtLoader
+from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory
 
 
 @pytest.fixture(name="loader_factory_pdf")
-def loader_factory_pdf_fixture(loader_factory) -> Iterator[LoaderFactory]:
+def loader_factory_pdf_fixture() -> Iterator[DocumentLoaderFactory]:
     """
     Fixture for testing the loader_factory function with PyPDFLoader.
 
@@ -26,13 +16,13 @@ def loader_factory_pdf_fixture(loader_factory) -> Iterator[LoaderFactory]:
     Yields:
         LoaderFactory: The result of calling the loader_factory function.
     """
-    mock_loader = create_autospec(PyPDFLoader, instance=True)
-    with patch("chatdoc.doc_loader.loader_factory.PyPDFLoader", return_value=mock_loader):
-        yield loader_factory()
+    mock_loader = MagicMock(spec=DocumentLoaderFactory)
+    mock_loader.create.return_value = MagicMock(spec=PyPDFLoader)
+    return mock_loader
 
 
 @pytest.fixture(name="loader_factory_docx")
-def loader_factory_docx_fixture(loader_factory) -> Iterator[LoaderFactory]:
+def loader_factory_docx_fixture() -> Iterator[DocumentLoaderFactory]:
     """
     Fixture for testing the loader_factory function with Docx2txtLoader.
 
@@ -42,9 +32,9 @@ def loader_factory_docx_fixture(loader_factory) -> Iterator[LoaderFactory]:
     Yields:
         LoaderFactory: The loader_factory function called with the mocked Docx2txtLoader.
     """
-    mock_loader = create_autospec(Docx2txtLoader, instance=True)
-    with patch("chatdoc.doc_loader.loader_factory.Docx2txtLoader", return_value=mock_loader):
-        yield loader_factory()
+    mock_loader = MagicMock(spec=DocumentLoaderFactory)
+    mock_loader.create.return_value = MagicMock(spec=Docx2txtLoader)
+    return mock_loader
 
 
 def test_create_pdf_loader(loader_factory_pdf):

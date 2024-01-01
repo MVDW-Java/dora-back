@@ -6,7 +6,7 @@ from langchain.schema.document import Document
 import pytest
 
 from chatdoc.doc_loader.document_loader import DocumentLoader
-from chatdoc.doc_loader.loader_factory import LoaderFactory, BaseLoader
+from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory, BaseLoader
 
 
 @pytest.fixture(name="mock_loader_factory")
@@ -17,7 +17,7 @@ def fixture_mock_loader_factory():
     Returns:
         MagicMock: A mock loader factory object.
     """
-    mock_loader_factory = MagicMock(spec=LoaderFactory)
+    mock_loader_factory = MagicMock(spec=DocumentLoaderFactory)
     mock_doc_loader = MagicMock(spec=BaseLoader)
     mock_loader_factory.create.return_value = mock_doc_loader
     return mock_loader_factory

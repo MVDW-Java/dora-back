@@ -5,11 +5,10 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationBufferMemory
 
-
-from .vector_db import VectorDatabase
-from .citation import Citations
-from .embedding import Embedding
-from .chat_model import ChatModel
+from chatdoc.vector_db import VectorDatabase
+from chatdoc.citation import Citations
+from chatdoc.embed.embedding_factory import EmbeddingFactory
+from chatdoc.chat_model import ChatModel
 
 
 class Chatbot:
@@ -21,7 +20,7 @@ class Chatbot:
         self,
         user_id: str,
     ) -> None:
-        self.embedding_fn = Embedding().embedding_function
+        self.embedding_fn = EmbeddingFactory().create()
         self.vector_db = VectorDatabase(user_id, self.embedding_fn)
         self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True, output_key="answer")
         self.chat_model: BaseChatModel = ChatModel().chat_model

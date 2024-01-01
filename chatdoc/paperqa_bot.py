@@ -3,7 +3,7 @@ from paperqa import Answer, Docs
 
 from langchain.chat_models.base import BaseChatModel
 
-from .embedding import Embedding
+from .embed.embedding_factory import EmbeddingFactory
 from .vector_db import VectorDatabase
 from .chat_model import ChatModel
 
@@ -14,7 +14,7 @@ class PaperQABot:
     """
 
     def __init__(self, user_id: str) -> None:
-        self.embedding_fn = Embedding().embedding_function
+        self.embedding_fn = EmbeddingFactory().create()
         self.chat_model: BaseChatModel = ChatModel().chat_model
         self.vector_db = VectorDatabase(user_id, self.embedding_fn)
         self.docs = Docs(llm=self.chat_model, embeddings=self.embedding_fn, doc_index=self.vector_db.chroma_instance)

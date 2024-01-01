@@ -2,7 +2,7 @@ from langchain.document_loaders import PyPDFLoader, Docx2txtLoader
 from langchain.document_loaders.base import BaseLoader
 
 
-class LoaderFactory:
+class DocumentLoaderFactory:
     """
     Factory class for creating document loaders based on file extension.
     """
@@ -14,7 +14,7 @@ class LoaderFactory:
             # Add other file types and their corresponding loaders here
         }
 
-    def create(self, abs_file_path, file_extension) -> BaseLoader:
+    def create(self, abs_file_path: str, file_extension: str) -> BaseLoader:
         """
         Create a document loader based on the file extension.
 

@@ -5,7 +5,7 @@ import os
 from langchain.text_splitter import TokenTextSplitter, TextSplitter
 from langchain.schema import Document
 
-from chatdoc.doc_loader.loader_factory import LoaderFactory, BaseLoader
+from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory, BaseLoader
 
 
 class DocumentLoader:
@@ -26,7 +26,7 @@ class DocumentLoader:
 
     """
 
-    def __init__(self, document_dict: dict[str, Path], loader_factory: LoaderFactory):
+    def __init__(self, document_dict: dict[str, Path], loader_factory: DocumentLoaderFactory):
         self.loader_factory = loader_factory
         self.loaders = self.initialize_loaders(document_dict)
         self.document_iterator = self.chain_document_iterators()
