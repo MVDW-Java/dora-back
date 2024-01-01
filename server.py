@@ -3,6 +3,7 @@ import tempfile
 from pathlib import Path
 import uuid
 import os
+import asyncio
 from datetime import date
 
 # third party imports
@@ -28,7 +29,10 @@ list_of_allowed_origins: list[str] = []
 match current_env:
     case "DEV":
         CORS(app)
-        list_of_allowed_origins.append("http://127.0.0.1:3000")
+        if os.environ.get("DEV_URL") is not None:
+            list_of_allowed_origins.append(os.environ["DEV_URL"])
+        else:
+            raise ValueError("DEV_URL environment variable not set")
         print("Running in development mode")
     case "PROD":
         print("Running in production mode")
@@ -56,6 +60,20 @@ async def process_files(document_dict: dict[str, Path], user_id: str) -> None:
     vector_db = VectorDatabase(user_id, embedding_fn)
     print("Adding documents to vector database...")
     await vector_db.add_documents(documents)
+
+
+@app.errorhandler(ValueError)  # type: ignore
+def handle_value_error(error: ValueError) -> Response:
+    """
+    Handles a ValueError.
+
+    Args:
+        error (ValueError): The ValueError to handle.
+
+    Returns:
+        Response: A response object containing the error message and status code.
+    """
+    return make_response({"error": str(error)}, 400)
 
 
 @app.after_request
@@ -129,6 +147,7 @@ def upload_files() -> Response:
     prefix: str = request.form["prefix"]
     files = {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
     dir_path: Path = Path(tempfile.gettempdir()) / Path(str(session["id"]))
+    os.makedirs(dir_path, exist_ok=True)
     full_document_dict = {}
     for filename, file in files.items():
         secure_file_name = secure_filename(filename)
@@ -136,8 +155,9 @@ def upload_files() -> Response:
         unique_file_name = f"{secure_path.stem}_{current_date}_{secure_path.suffix}"
         unique_file_path = dir_path / Path(unique_file_name)
         full_document_dict[unique_file_name] = unique_file_path
-        file.save(dir_path)
-    _ = process_files(full_document_dict, session["id"])
+        file.save(unique_file_path)
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(process_files(full_document_dict, session["id"]))
     response = make_response(
         {"message": f"{str(len(files))} file{'s' if len(files) != 0 else ''} uploaded successfully!"}, 200
     )

@@ -82,4 +82,4 @@ class DocumentLoader:
         else:
             print("No chunk size specified, defaulting to 1000")  # TODO: replace with logging
             chunk_size = 1000
-        return TokenTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
+        return TokenTextSplitter(chunk_size=chunk_size, chunk_overlap=0, allowed_special={"<|endoftext|>"})
