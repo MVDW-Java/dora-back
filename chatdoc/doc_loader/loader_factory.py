@@ -1,6 +1,5 @@
 from langchain.document_loaders import PyPDFLoader, Docx2txtLoader
-
-SupportedLoader = PyPDFLoader | Docx2txtLoader
+from langchain.document_loaders.base import BaseLoader
 
 
 class LoaderFactory:
@@ -9,13 +8,13 @@ class LoaderFactory:
     """
 
     def __init__(self):
-        self.loader_map: dict[str, type[SupportedLoader]] = {
+        self.loader_map: dict[str, type[BaseLoader]] = {
             ".pdf": PyPDFLoader,
             ".docx": Docx2txtLoader,
             # Add other file types and their corresponding loaders here
         }
 
-    def create(self, abs_file_path, file_extension) -> SupportedLoader:
+    def create(self, abs_file_path, file_extension) -> BaseLoader:
         """
         Create a document loader based on the file extension.
 

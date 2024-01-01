@@ -1,10 +1,11 @@
 from pathlib import Path
-import itertools
+from itertools import chain
 import os
 
 from langchain.text_splitter import TokenTextSplitter, TextSplitter
+from langchain.schema import Document
 
-from chatdoc.doc_loader.loader_factory import LoaderFactory, SupportedLoader
+from chatdoc.doc_loader.loader_factory import LoaderFactory, BaseLoader
 
 
 class DocumentLoader:
@@ -31,7 +32,7 @@ class DocumentLoader:
         self.document_iterator = self.chain_document_iterators()
         self.text_splitter: TextSplitter = self.load_token_text_splitter()
 
-    def initialize_loaders(self, document_dict: dict[str, Path]) -> list[SupportedLoader]:
+    def initialize_loaders(self, document_dict: dict[str, Path]) -> list[BaseLoader]:
         """
         Initializes the loaders using the document dictionary.
 
@@ -51,7 +52,7 @@ class DocumentLoader:
         ]
         return loaders
 
-    def chain_document_iterators(self):
+    def chain_document_iterators(self) -> chain[Document]:
         """
         Chains the document iterators from all loaders.
 
@@ -59,7 +60,7 @@ class DocumentLoader:
             itertools.chain: An iterator that chains the document iterators from all loaders.
 
         """
-        return itertools.chain(*[loader.lazy_load() for loader in self.loaders])
+        return chain(*[loader.lazy_load() for loader in self.loaders])
 
     def load_token_text_splitter(self) -> TextSplitter:
         """
