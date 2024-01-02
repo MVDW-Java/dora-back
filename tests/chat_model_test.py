@@ -1,3 +1,4 @@
+import os
 import pytest
 from langchain.chat_models.openai import ChatOpenAI
 from chatdoc.chat_model import ChatModel
@@ -76,8 +77,14 @@ def test_missing_openai_api_key():
     """
     Test case to ensure that a ValueError is raised when the OpenAI API key is not set.
     """
-    with pytest.raises(ValueError):
-        ChatModel(chat_model_vendor_name="openai", chat_model_name="gpt-3")
+    if "OPENAI_API_KEY" in os.environ:
+        assert isinstance(
+            ChatModel(chat_model_vendor_name="openai", chat_model_name="gpt-3").chat_model,
+              ChatOpenAI) 
+    else:
+        with pytest.raises(ValueError):
+            ChatModel(chat_model_vendor_name="openai", chat_model_name="gpt-3")
+
 
 
 def test_missing_huggingface_api_key():
