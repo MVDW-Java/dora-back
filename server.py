@@ -189,9 +189,9 @@ def prompt() -> Response:
     """
     if "id" not in session:
         return make_response({"error": "You have not been authenticated, please identify yourself first."}, 401)
-    if request.json is None:
-        return make_response({"error": "No JSON body received"}, 400)
-    message = request.json["prompt"]
+    if request.form is None:
+        return make_response({"error": "No form data received"}, 400)
+    message = request.form["prompt"]
     chatbot = Chatbot(session["id"])
     result = chatbot.send_prompt(message)
     return make_response(result, 200)
