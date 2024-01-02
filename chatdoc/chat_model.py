@@ -1,5 +1,9 @@
-from langchain.chat_models.base import BaseChatModel
-from langchain.chat_models.openai import ChatOpenAI
+import json
+from langchain_community.chat_models.azureml_endpoint import AzureMLChatOnlineEndpoint
+from langchain_community.chat_models import ChatOpenAI
+from langchain_core.pydantic_v1 import SecretStr
+from langchain_core.language_models.chat_models import BaseChatModel
+
 from .utils import Utils
 
 
@@ -34,6 +38,14 @@ class ChatModel:
                 if self.api_key is None:
                     self.api_key = Utils.get_env_variable("HUGGINGFACE_API_KEY")
                 raise NotImplementedError("HuggingFace chat model not implemented")
+            case "azureml":
+                if self.api_key is None:
+                    self.api_key = Utils.get_env_variable("AZUREML_API_KEY")
+                azure_chat_models = json.load(open("../azure_chat_models.json", "r", encoding="utf-8"))
+                if self.chat_model_name not in azure_chat_models:
+                    raise ValueError("Invalid Azure ML chat model name")
+                chat_model_url = azure_chat_models[self.chat_model_name]
+                return AzureMLChatOnlineEndpoint(endpoint_api_key=SecretStr(self.api_key), endpoint_url=chat_model_url)
             case _:
                 raise ValueError("Invalid vendor name")
 
