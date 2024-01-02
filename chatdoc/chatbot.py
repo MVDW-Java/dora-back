@@ -1,8 +1,8 @@
 from typing import Any
 import time
 
-from langchain.chains import ConversationalRetrievalChain
-from langchain.chat_models.base import BaseChatModel
+from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain.memory import ConversationBufferMemory
 
 from chatdoc.vector_db import VectorDatabase
