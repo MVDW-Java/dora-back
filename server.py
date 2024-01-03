@@ -12,8 +12,8 @@ from flask import Flask, request, session, make_response, Response
 from flask_cors import CORS
 
 # local imports
-from server.methods import ServerMethods
-from server.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse
+from serf.methods import ServerMethods
+from serf.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse
 from chatdoc.chatbot import Chatbot
 
 
