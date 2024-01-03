@@ -3,6 +3,7 @@ import uuid
 import os
 import asyncio
 
+
 import logging
 
 # third party imports
@@ -11,7 +12,8 @@ from flask import Flask, request, session, make_response, Response
 from flask_cors import CORS
 
 # local imports
-from server_methods import ServerMethods
+from server.methods import ServerMethods
+from server.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse
 from chatdoc.chatbot import Chatbot
 
 
@@ -51,8 +53,8 @@ def handle_value_error(error: ValueError) -> Response:
     Returns:
         Response: A response object containing the error message and status code.
     """
-    # app.logger.error(error)
-    return make_response({"error": str(error)}, 400)
+    response_message = ResponseMessage(message="", error=str(error))
+    return make_response(response_message, 400)
 
 
 @app.after_request
@@ -68,10 +70,12 @@ def add_cors_headers(response: Response) -> Response:
     """
     origin = request.headers.get("Origin")
     if origin is None:
-        return make_response({"error": "No origin header found"}, 400)
+        response_message = ResponseMessage(message="", error="No origin header found")
+        return make_response(response_message, 400)
     response.headers["Access-Control-Allow-Origin"] = origin
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
+
 
 @app.route("/upload_files", methods=["OPTIONS"])
 @app.route("/prompt", methods=["OPTIONS"])
@@ -88,7 +92,6 @@ def set_post_options() -> Response:
     return response
 
 
-
 @app.route("/identify", methods=["GET"])
 def identify() -> Response:
     """
@@ -97,20 +100,15 @@ def identify() -> Response:
     Returns:
         dict: A response object containing the sessionId and message.
     """
-    response = {}
-    if "id" in session and isinstance(session["id"], str):
-        response["message"] = "Welcome back user: " + session["id"] + "!"
-        response["sessionId"] = session["id"]
-        response["authenticated"] = True
-        response["hasDB"] = session["hasDB"]
-    else:
-        session["id"] = str(uuid.uuid4())
-        session["authenticated"] = True
-        session["hasDB"] = False
-        session["files"] = {}
-        response["message"] = "Welcome new user: " + session["id"] + "!"
-    response = make_response(response)
+    identity = Identity(sessionId=str(uuid.uuid4()), authenticated=False, hasDB=False)
+    identify_response = IdentifyResponse(message=f"Welcome new user: {identity['sessionId']} !", error="", **identity)
+    if "sessionId" in session and isinstance(session["sessionId"], str):
+        identity = Identity(sessionId=session["sessionId"], authenticated=True, hasDB=session["hasDB"])
+        identify_response = IdentifyResponse(message=f"Welcome back user: {session['sessionId']} !", error="", **identity)
+    session.update(identity)
+    response = make_response(identify_response, 200)
     return response
+
 
 @app.route("/upload_files", methods=["POST"])
 def upload_files() -> Response:
@@ -122,18 +120,20 @@ def upload_files() -> Response:
         tuple: Error message and status code if user is not authenticated.
     """
 
-    if "id" not in session:
+    if "sessionId" not in session:
         return make_response({"error": "You have not been authenticated, please identify yourself first."}, 401)
     prefix: str = request.form["prefix"]
     files = {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
-    full_document_dict = sm_app.save_files(files, session["id"])
+    full_document_dict = sm_app.save_files(files, session["sessionId"])
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(sm_app.process_files(full_document_dict, session["id"]))
+    loop.run_until_complete(sm_app.process_files(full_document_dict, session["sessionId"]))
     loop.close()
-    response = make_response(
-        {"message": f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!"}, 200
+    response_message = ResponseMessage(
+        message=f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!", error=""
     )
+    response = make_response(response_message, 200)
     return response
+
 
 @app.route("/prompt", methods=["POST"])
 def prompt() -> Response:
@@ -143,17 +143,19 @@ def prompt() -> Response:
     Returns:
         tuple: A tuple containing the response message and the HTTP status code.
     """
-    if "id" not in session:
+    if "sessionId" not in session:
         return make_response({"error": "You have not been authenticated, please identify yourself first."}, 401)
     if request.form is None:
         return make_response({"error": "No form data received"}, 400)
     message = request.form["prompt"]
     chatbot = Chatbot(
-        user_id=session["id"],
+        user_id=session["sessionId"],
         document_dict=session["files"],
     )
-    result = chatbot.send_prompt(message)
-    return make_response(result, 200)
+    prompt_response = PromptResponse(
+        message="Prompt result is found under the result key.", error="", result=chatbot.send_prompt(message)
+    )
+    return make_response(prompt_response, 200)
 
 
 if __name__ == "__main__":
