@@ -17,8 +17,6 @@ from serf.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptR
 from chatdoc.chatbot import Chatbot
 
 
-# logging.basicConfig(level=logging.INFO, filename="server.log")
-
 app = Flask(__name__)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = True
