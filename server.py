@@ -90,8 +90,9 @@ def add_cors_headers(response: Response) -> Response:
         Response: The response object with CORS headers added.
     """
     origin = request.headers.get("Origin")
-    if origin in list_of_allowed_origins:
-        response.headers["Access-Control-Allow-Origin"] = origin
+    if origin is None:
+        return make_response({"error": "No origin header found"}, 400)
+    response.headers["Access-Control-Allow-Origin"] = origin
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
@@ -157,6 +158,7 @@ def upload_files() -> Response:
         file.save(unique_file_path)
     loop = asyncio.new_event_loop()
     loop.run_until_complete(process_files(full_document_dict, session["id"]))
+    loop.close()
     response = make_response(
         {"message": f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!"}, 200
     )
@@ -171,7 +173,7 @@ def prompt_options() -> Response:
     Returns:
         Response: A response object containing the CORS headers.
     """
-    response = make_response()
+    response = make_response("OPTIONS OK", 200)
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     response.headers["Access-Control-Allow-Methods"] = "POST"
     return response
@@ -187,9 +189,9 @@ def prompt() -> Response:
     """
     if "id" not in session:
         return make_response({"error": "You have not been authenticated, please identify yourself first."}, 401)
-    if request.json is None:
-        return make_response({"error": "No JSON body received"}, 400)
-    message = request.json["prompt"]
+    if request.form is None:
+        return make_response({"error": "No form data received"}, 400)
+    message = request.form["prompt"]
     chatbot = Chatbot(session["id"])
     result = chatbot.send_prompt(message)
     return make_response(result, 200)
