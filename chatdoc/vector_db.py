@@ -2,11 +2,27 @@
 Module definine the VectorDatabase class
 """
 import os
+from typing import TypedDict
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
 from langchain.vectorstores.chroma import Chroma
 from chromadb import PersistentClient
 from chromadb.api import ClientAPI
+
+
+class SearchArgs(TypedDict, total=False):
+    """
+    Represents the arguments for a search operation.
+
+    Attributes:
+        k (int): The number of top documents to return.
+        score_threshold (float): The threshold score for documents to be included in the results.
+        fetch_k (int): The total number of documents to fetch from the database.
+    """
+
+    k: int
+    score_threshold: float
+    fetch_k: int
 
 
 class VectorDatabase:
@@ -44,7 +60,21 @@ class VectorDatabase:
             client=self.chroma_client,
             embedding_function=embedding_fn,
         )
-        self.retriever = self.chroma_instance.as_retriever()
+        self.search_kwargs = self.load_search_kwargs()
+        self.retriever = self.chroma_instance.as_retriever(**self.search_kwargs)
+
+    def load_search_kwargs(self) -> SearchArgs:
+        """
+        Load search kwargs from the config file
+        """
+        search_kwargs: SearchArgs = {}
+        top_k_documents = os.environ.get("TOP_K_DOCUMENTS")
+        minimum_accuracy = os.environ.get("MINIMUM_ACCURACY")
+        if top_k_documents:
+            search_kwargs["k"] = int(top_k_documents)
+        if minimum_accuracy:
+            search_kwargs["score_threshold"] = float(minimum_accuracy)
+        return search_kwargs
 
     async def add_documents(self, documents: list[Document]) -> None:
         """
