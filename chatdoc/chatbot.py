@@ -5,7 +5,7 @@ from pathlib import Path
 
 from langchain.tools.vectorstore.tool import VectorStoreQAWithSourcesTool
 from langchain.tools import Tool
-from langchain.agents import Agent, initialize_agent, AgentType
+from langchain.agents import Agent, initialize_agent, AgentType, OpenAIFunctionsAgent, ConversationalChatAgent
 from langchain.chains import ConversationalRetrievalChain, RetrievalQAWithSourcesChain, RetrievalQA
 from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationBufferMemory
@@ -19,6 +19,11 @@ from chatdoc.chat_model import ChatModel
 
 class DocumentInput(BaseModel):
     question: str = Field()
+
+
+# class DocumentInput(BaseModel):
+#     question: str = Field()
+#     chat_history: list = Field()
 
 
 class Chatbot:
@@ -40,22 +45,29 @@ class Chatbot:
         self._embedding_factory = embedding_factory if embedding_factory else EmbeddingFactory()
         self._embedding_fn = self._embedding_factory.create()
         self._vector_database = vector_database if vector_database else VectorDatabase(user_id, self._embedding_fn)
-        self._memory = (
+        self.chain_memory = (
             memory
             if memory
-            else ConversationBufferMemory(memory_key="chat_history", output_key="answer", return_messages=True)
+            else ConversationBufferMemory(memory_key="chain_history", output_key="answer", return_messages=True)
+        )
+        self.agent_memory = ConversationBufferMemory(
+            memory_key="agent_history", output_key="output", return_messages=True
         )
         self.last_n_messages = last_n_messages
         self._chat_model = chat_model if chat_model else ChatModel().chat_model
-        self._retrieval_chain = RetrievalQA.from_chain_type(
-            llm=self._chat_model, retriever=self._vector_database.retriever
-        )
         self.tools = self.create_tools(document_dict)
+        # self._agent = OpenAIFunctionsAgent.from_llm_and_tools(
+        #     llm=self._chat_model,
+        #     tools=self.tools,
+        #     memory=self._memory,
+        #     verbose=True,
+        #     output
+        # )
         self.agent = initialize_agent(
             agent=AgentType.OPENAI_FUNCTIONS,
             tools=self.tools,
             llm=self._chat_model,
-            # memory=self._memory,
+            memory=self.agent_memory,
             verbose=True,
             return_intermediate_steps=True,
             return_source_documents=True,
@@ -67,12 +79,33 @@ class Chatbot:
 
     def create_tools(self, document_dict: dict[str, str]) -> list[Tool]:
         document_names = [str(Path(document_name).stem) for document_name in document_dict.keys()]
+        # retrieval_chain = ConversationalRetrievalChain.from_llm(
+        #     llm=self._chat_model,
+        #     retriever=self._vector_database.retriever,
+        #     memory=self._memory,
+        #     return_source_documents=True,
+        #     verbose=True,
+        # )
+        retrieval_chain = RetrievalQAWithSourcesChain.from_llm(
+            llm=self._chat_model,
+            retriever=self._vector_database.retriever,
+            memory=self.chain_memory,
+            return_source_documents=True,
+            verbose=True,
+        )
+
+        def run_chain(question: str):
+            results = retrieval_chain({"question": question}, return_only_outputs=True)
+            # return str(results)
+            return results
+
         return [
             Tool(
                 args_schema=DocumentInput,
                 name=document_name,
                 description=f"useful when you want to answer questions about {document_name}",
-                func=RetrievalQA.from_chain_type(llm=self._chat_model, retriever=self._vector_database.retriever),
+                func=run_chain,
+                return_direct=False,
             )
             for document_name in document_names
         ]
@@ -81,7 +114,7 @@ class Chatbot:
         """
         Method to send a prompt to the chatbot
         """
-        result = self.agent(inputs={"input": prompt, "chat_history": self.chat_history_internal})
+        result = self.agent(inputs={"input": prompt, "agent_history": self.chat_history_internal})
         print(result)
         # citations: Citations = Citations(set(), False)
         # citations.get_unique_citations(result["source_documents"])

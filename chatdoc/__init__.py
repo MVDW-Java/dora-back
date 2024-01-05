@@ -10,8 +10,7 @@ from chatdoc.vector_db import VectorDatabase  # TODO: remove these lines before 
 
 
 def main():
-    user_identification = "adr_collection"  # TODO: remove this line
-    temp_dir = gettempdir()
+    user_identification = "adr_collection"  # TODO: remove this line before commit
     raw_names = ["./Interim-auditrapport 2022 Financien.pdf", "./Interim-auditrapport 2023 Financien.pdf"]
     safe_names = [secure_filename(raw_name) for raw_name in raw_names]
     document_dict = {
