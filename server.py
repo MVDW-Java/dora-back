@@ -20,6 +20,8 @@ from chatdoc.embed.embedding_factory import EmbeddingFactory
 from chatdoc.chatbot import Chatbot
 from chatdoc.utils import Utils
 
+# logging.basicConfig(level=logging.INFO, filename="server.log")
+
 app = Flask(__name__)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = True
@@ -27,7 +29,7 @@ app.config["SESSION_COOKIE_SECURE"] = True
 current_env = os.environ.get("CURRENT_ENV", "DEV")
 
 list_of_allowed_origins: list[str] = []
-app.logger.level = logging.INFO
+app.logger.setLevel(logging.INFO)
 match current_env:
     case "DEV":
         CORS(app)
@@ -75,6 +77,7 @@ def handle_value_error(error: ValueError) -> Response:
     Returns:
         Response: A response object containing the error message and status code.
     """
+    # app.logger.error(error)
     return make_response({"error": str(error)}, 400)
 
 
@@ -115,6 +118,7 @@ def identify() -> Response:
         session["id"] = str(uuid.uuid4())
         session["authenticated"] = True
         session["hasDB"] = False
+        session["files"] = {}
         response["message"] = "Welcome new user: " + session["id"] + "!"
     response = make_response(response)
     return response
@@ -150,12 +154,13 @@ def upload_files() -> Response:
     files = {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
     dir_path: Path = Path(tempfile.gettempdir()) / Path(str(session["id"]))
     os.makedirs(dir_path, exist_ok=True)
-    full_document_dict = {}
+    full_document_dict: dict[str, Path] = {}
     for filename, file in files.items():
         unique_file_name = Utils.get_unique_filename(filename)
         unique_file_path = dir_path / Path(unique_file_name)
         full_document_dict[unique_file_name] = unique_file_path
         file.save(unique_file_path)
+    session["files"] = {k: str(v) for k, v in full_document_dict.items()}
     loop = asyncio.new_event_loop()
     loop.run_until_complete(process_files(full_document_dict, session["id"]))
     loop.close()
@@ -192,7 +197,7 @@ def prompt() -> Response:
     if request.form is None:
         return make_response({"error": "No form data received"}, 400)
     message = request.form["prompt"]
-    chatbot = Chatbot(session["id"])
+    chatbot = Chatbot(session["id"], session["files"])
     result = chatbot.send_prompt(message)
     return make_response(result, 200)
 

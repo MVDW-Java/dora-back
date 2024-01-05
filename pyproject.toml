@@ -14,10 +14,10 @@ pypdf = "^3.17.1"
 tiktoken = "^0.5.1"
 chromadb = "^0.4.17"
 openai = "^1.2.4"
-paper-qa = {git = "https://github.com/whitead/paper-qa.git", rev = "updates"}
 flask = "^3.0.0"
 flask-cors = "^4.0.0"
 pytest = "^7.4.3"
+pydantic = "^2.5.3"
 
 
 
