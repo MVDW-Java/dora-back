@@ -10,7 +10,7 @@ from chromadb import PersistentClient
 from chromadb.api import ClientAPI
 
 
-class SearchArgs(TypedDict, total=False):
+class SearchArgs(TypedDict, total=True):
     """
     Represents the arguments for a search operation.
 
@@ -63,18 +63,34 @@ class VectorDatabase:
         self.search_kwargs = self.load_search_kwargs()
         self.retriever = self.chroma_instance.as_retriever(**self.search_kwargs)
 
-    def load_search_kwargs(self) -> SearchArgs:
+    def load_search_kwargs(
+        self, top_k_documents_default=5, minimum_accuracy_default=0.80, fetch_k_default=100
+    ) -> SearchArgs:
         """
         Load search kwargs from the config file
         """
-        search_kwargs: SearchArgs = {}
-        top_k_documents = os.environ.get("TOP_K_DOCUMENTS")
-        minimum_accuracy = os.environ.get("MINIMUM_ACCURACY")
-        if top_k_documents:
-            search_kwargs["k"] = int(top_k_documents)
-        if minimum_accuracy:
-            search_kwargs["score_threshold"] = float(minimum_accuracy)
+        top_k_documents = os.environ.get("TOP_K_DOCUMENTS", top_k_documents_default)
+        minimum_accuracy = os.environ.get("MINIMUM_ACCURACY", minimum_accuracy_default)
+        fetch_k_documents = os.environ.get("FETCH_K_DOCUMENTS", fetch_k_default)
+        search_kwargs: SearchArgs = {
+            "k": int(top_k_documents),
+            "score_threshold": float(minimum_accuracy),
+            "fetch_k": int(fetch_k_documents),
+        }
         return search_kwargs
+
+    def get_retriever_settings(self) -> SearchArgs:
+        """
+        Get the retriever settings
+        """
+        return self.search_kwargs
+
+    def update_retriever_settings(self, search_kwargs: SearchArgs) -> None:
+        """
+        Update the retriever settings
+        """
+        self.search_kwargs = search_kwargs
+        self.retriever = self.chroma_instance.as_retriever(search_kwargs=search_kwargs)
 
     async def add_documents(self, documents: list[Document]) -> None:
         """

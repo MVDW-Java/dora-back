@@ -43,7 +43,8 @@ class Chatbot:
             return_source_documents=True,
         )
         self.embedding_fn = self._embedding_factory.create()
-        self.chat_history: list[tuple[str, str, list[BaseCitation]]] = []
+        self.chat_history_internal: list = []
+        self.chat_history_export: list[tuple[str, str, list[BaseCitation]]] = []
 
     def send_prompt(self, prompt: str) -> dict[str, Any]:
         """
@@ -52,17 +53,18 @@ class Chatbot:
         result = self._retrieval_chain(
             {
                 "question": prompt,
-                "chat_history": self.chat_history,
+                "chat_history": self.chat_history_internal,
             },
         )
         citations: Citations = Citations(set(), False)
         citations.get_unique_citations(result["source_documents"])
         citations_list = list(citations.citations)
-        self.chat_history.append((prompt, result["answer"], citations_list))
+        self.chat_history_internal.append(result["chat_history"])
+        self.chat_history_export.append((prompt, result["answer"], citations_list))
         response = {
             "answer": result["answer"],
             "citations": citations_list,
-            "chat_history": self.chat_history,
+            "chat_history": self.chat_history_export,
         }
         return response
 
