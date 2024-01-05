@@ -58,6 +58,7 @@ class Chatbot:
             memory=self.agent_memory,
             return_intermediate_steps=True,
             return_source_documents=True,
+            # handle_passing_errors=True,
         )
         self.logger = logger if logger else Logger("chatbot")
         self.chat_history_internal: list = []
