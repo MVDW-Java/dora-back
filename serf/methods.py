@@ -53,7 +53,7 @@ class ServerMethods:
             None
         """
         loader_factory = DocumentLoaderFactory()
-        document_loader = DocumentLoader(document_dict, loader_factory)
+        document_loader = DocumentLoader(document_dict, loader_factory, self.app.logger)
         embedding_fn = EmbeddingFactory().create()
         vector_db = VectorDatabase(user_id, embedding_fn)
         documents = document_loader.text_splitter.split_documents(document_loader.document_iterator)
