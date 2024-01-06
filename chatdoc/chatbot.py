@@ -9,6 +9,7 @@ from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationBufferMemory
 from pydantic.v1 import BaseModel, Field
+from chatdoc.utils import Utils
 
 from chatdoc.vector_db import VectorDatabase
 from chatdoc.citation import Citations, BaseCitation, Citation
@@ -55,7 +56,6 @@ class Chatbot:
             tools=self.tools,
             llm=self._chat_model,
             memory=self.agent_memory,
-            # verbose=True,
             return_intermediate_steps=True,
             return_source_documents=True,
         )
@@ -65,12 +65,12 @@ class Chatbot:
 
     def create_tools(self, document_dict: dict[str, str]) -> list[Tool]:
         document_names = [str(Path(document_name).stem) for document_name in document_dict.keys()]
+        document_names = [Utils.remove_date_from_filename(document_name) for document_name in document_names]
         retrieval_chain = RetrievalQAWithSourcesChain.from_llm(
             llm=self._chat_model,
             retriever=self._vector_database.retriever,
             memory=self.chain_memory,
             return_source_documents=True,
-            # verbose=True,
         )
 
         def run_chain(question: str) -> dict[str, Any]:

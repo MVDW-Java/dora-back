@@ -197,7 +197,10 @@ def prompt() -> Response:
     if request.form is None:
         return make_response({"error": "No form data received"}, 400)
     message = request.form["prompt"]
-    chatbot = Chatbot(session["id"], session["files"])
+    chatbot = Chatbot(
+        user_id=session["id"],
+        document_dict=session["files"],
+    )
     result = chatbot.send_prompt(message)
     return make_response(result, 200)
 
