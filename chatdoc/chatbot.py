@@ -55,7 +55,7 @@ class Chatbot:
             tools=self.tools,
             llm=self._chat_model,
             memory=self.agent_memory,
-            verbose=True,
+            # verbose=True,
             return_intermediate_steps=True,
             return_source_documents=True,
         )
@@ -70,7 +70,7 @@ class Chatbot:
             retriever=self._vector_database.retriever,
             memory=self.chain_memory,
             return_source_documents=True,
-            verbose=True,
+            # verbose=True,
         )
 
         def run_chain(question: str) -> dict[str, Any]:
