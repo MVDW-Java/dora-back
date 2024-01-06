@@ -3,27 +3,21 @@ from logging import Logger
 import time
 from pathlib import Path
 
-from langchain.tools.vectorstore.tool import VectorStoreQAWithSourcesTool
 from langchain.tools import Tool
-from langchain.agents import Agent, initialize_agent, AgentType, OpenAIFunctionsAgent, ConversationalChatAgent
-from langchain.chains import ConversationalRetrievalChain, RetrievalQAWithSourcesChain, RetrievalQA
+from langchain.agents import initialize_agent, AgentType
+from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.chat_models.base import BaseChatModel
 from langchain.memory import ConversationBufferMemory
 from pydantic.v1 import BaseModel, Field
 
 from chatdoc.vector_db import VectorDatabase
-from chatdoc.citation import Citations, BaseCitation
+from chatdoc.citation import Citations, BaseCitation, Citation
 from chatdoc.embed.embedding_factory import EmbeddingFactory
 from chatdoc.chat_model import ChatModel
 
 
 class DocumentInput(BaseModel):
     question: str = Field()
-
-
-# class DocumentInput(BaseModel):
-#     question: str = Field()
-#     chat_history: list = Field()
 
 
 class Chatbot:
@@ -56,13 +50,6 @@ class Chatbot:
         self.last_n_messages = last_n_messages
         self._chat_model = chat_model if chat_model else ChatModel().chat_model
         self.tools = self.create_tools(document_dict)
-        # self._agent = OpenAIFunctionsAgent.from_llm_and_tools(
-        #     llm=self._chat_model,
-        #     tools=self.tools,
-        #     memory=self._memory,
-        #     verbose=True,
-        #     output
-        # )
         self.agent = initialize_agent(
             agent=AgentType.OPENAI_FUNCTIONS,
             tools=self.tools,
@@ -71,7 +58,6 @@ class Chatbot:
             verbose=True,
             return_intermediate_steps=True,
             return_source_documents=True,
-            # handle_passing_errors=True,
         )
         self.logger = logger if logger else Logger("chatbot")
         self.chat_history_internal: list = []
@@ -79,13 +65,6 @@ class Chatbot:
 
     def create_tools(self, document_dict: dict[str, str]) -> list[Tool]:
         document_names = [str(Path(document_name).stem) for document_name in document_dict.keys()]
-        # retrieval_chain = ConversationalRetrievalChain.from_llm(
-        #     llm=self._chat_model,
-        #     retriever=self._vector_database.retriever,
-        #     memory=self._memory,
-        #     return_source_documents=True,
-        #     verbose=True,
-        # )
         retrieval_chain = RetrievalQAWithSourcesChain.from_llm(
             llm=self._chat_model,
             retriever=self._vector_database.retriever,
@@ -94,9 +73,8 @@ class Chatbot:
             verbose=True,
         )
 
-        def run_chain(question: str):
+        def run_chain(question: str) -> dict[str, Any]:
             results = retrieval_chain({"question": question}, return_only_outputs=True)
-            # return str(results)
             return results
 
         return [
@@ -110,41 +88,34 @@ class Chatbot:
             for document_name in document_names
         ]
 
+    def get_citations_from_source_documents(self, prompt_result: dict[str, Any]) -> list[BaseCitation]:
+        source_documents = [
+            source_doc
+            for intermediate_step in prompt_result["intermediate_steps"]
+            for source_doc in intermediate_step[1]["source_documents"]
+        ]
+        citations: Citations = Citations(set(), False)
+        citations.get_unique_citations(source_documents)
+        citations_list = list(citations.citations)
+        return citations_list
+
+    def add_to_chat_history(self, chat_history: list[str], prompt: str, answer: str, citations: list[Citation]) -> None:
+        """
+        Method to add chat history
+        """
+        self.chat_history_internal.append(chat_history)
+        self.chat_history_export.append((prompt, answer, citations))
+
     def send_prompt(self, prompt: str) -> dict[str, Any]:
         """
         Method to send a prompt to the chatbot
         """
         result = self.agent(inputs={"input": prompt, "agent_history": self.chat_history_internal})
-        print(result)
-        # citations: Citations = Citations(set(), False)
-        # citations.get_unique_citations(result["source_documents"])
-        # citations_list = list(citations.citations)
-        # self.chat_history_internal.append(result["chat_history"])
-        # self.chat_history_export.append((prompt, result["answer"], citations_list))
+        citations: list[Citation] = self.get_citations_from_source_documents(result)
+        self.add_to_chat_history(result["agent_history"], prompt, result["output"], citations)
         response = {
-            # "answer": result["answer"],
-            # "citations": citations_list,
-            # "chat_history": self.chat_history_export,
+            "answer": result["output"],
+            "citations": citations,
+            "chat_history": self.chat_history_export,
         }
         return response
-
-    def run(self, text_width: int = 20, with_proof: bool = False):
-        """
-        Method to run the chatboat using input and printing
-        """
-        chat_history = []
-        qry = ""
-        while qry != "done":
-            qry = input("Question: ")
-            start = time.time()
-            print(f"Initial question:\n {qry:<{text_width}}", flush=True)
-            if qry != "done":
-                # response = self._retrieval_chain({"question": qry, "chat_history": chat_history})
-                response = self.agent(inputs={"input": qry})
-                print(f"Answer:\n {response['answer']:<{text_width}}", flush=True)
-                print("SOURCES: ", flush=True)
-                citations: Citations = Citations(set(), with_proof)
-                citations.get_unique_citations(response["source_documents"])
-                citations.print_citations()
-            end = time.time()
-            print(f"Time: {end - start:.2f}s", flush=True)
