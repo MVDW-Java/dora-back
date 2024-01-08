@@ -2,6 +2,7 @@ from typing import Any
 from logging import Logger
 import time
 from pathlib import Path
+import re
 
 from langchain.tools import Tool
 from langchain.agents import initialize_agent, AgentType
@@ -15,6 +16,11 @@ from chatdoc.vector_db import VectorDatabase
 from chatdoc.citation import Citations, BaseCitation, Citation
 from chatdoc.embed.embedding_factory import EmbeddingFactory
 from chatdoc.chat_model import ChatModel
+
+
+def sanitize_tool_name(raw_tool_name: str) -> str:
+    pattern = r"[^a-zA-Z0-9_-]"
+    return re.sub(pattern, "-", raw_tool_name)
 
 
 class DocumentInput(BaseModel):
@@ -78,16 +84,17 @@ class Chatbot:
             results = retrieval_chain({"question": question}, return_only_outputs=True)
             return results
 
-        return [
-            Tool(
+        def create_tool(document_name: str) -> Tool:
+            safe_tool_name = sanitize_tool_name(document_name)
+            return Tool(
                 args_schema=DocumentInput,
-                name=document_name,
+                name=safe_tool_name,
                 description=f"useful when you want to answer questions about {document_name}",
                 func=run_chain,
                 return_direct=False,
             )
-            for document_name in document_names
-        ]
+
+        return [create_tool(document_name) for document_name in document_names]
 
     def get_citations_from_source_documents(self, prompt_result: dict[str, Any]) -> list[BaseCitation]:
         source_documents = [
