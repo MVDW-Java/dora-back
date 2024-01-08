@@ -101,7 +101,7 @@ def identify() -> Response:
         dict: A response object containing the sessionId and message.
     """
     identity = Identity(sessionId=str(uuid.uuid4()), authenticated=False, hasDB=False)
-    identify_response = IdentifyResponse(message=f"Welcome new user: {session['id']} !", error="", **identity)
+    identify_response = IdentifyResponse(message=f"Welcome new user: {identity['sessionId']} !", error="", **identity)
     if "id" in session and isinstance(session["id"], str):
         identity = Identity(sessionId=session["id"], authenticated=True, hasDB=session["hasDB"])
         identify_response = IdentifyResponse(message=f"Welcome back user: {session['id']} !", error="", **identity)
