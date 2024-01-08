@@ -106,7 +106,9 @@ def identify() -> Response:
     identify_response = IdentifyResponse(message=f"Welcome new user: {identity['sessionId']} !", error="", **identity)
     if "sessionId" in session and isinstance(session["sessionId"], str):
         identity = Identity(sessionId=session["sessionId"], authenticated=True, hasDB=session["hasDB"])
-        identify_response = IdentifyResponse(message=f"Welcome back user: {session['sessionId']} !", error="", **identity)
+        identify_response = IdentifyResponse(
+            message=f"Welcome back user: {session['sessionId']} !", error="", **identity
+        )
     session.update(identity)
     response = make_response(identify_response, 200)
     return response
@@ -130,6 +132,7 @@ def upload_files() -> Response:
     loop = asyncio.new_event_loop()
     loop.run_until_complete(sm_app.process_files(full_document_dict, session["sessionId"]))
     loop.close()
+    session["files"] = {file_name: str(file_path) for file_name, file_path in full_document_dict.items()}
     response_message = ResponseMessage(
         message=f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!", error=""
     )
