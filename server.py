@@ -100,11 +100,13 @@ def identify() -> Response:
     Returns:
         dict: A response object containing the sessionId and message.
     """
-    identity = Identity(sessionId=str(uuid.uuid4()), authenticated=False, hasDB=False)
+    identity = Identity(sessionId=str(uuid.uuid4()), authenticated=True, hasDB=False)
     identify_response = IdentifyResponse(message=f"Welcome new user: {identity['sessionId']} !", error="", **identity)
-    if "id" in session and isinstance(session["id"], str):
-        identity = Identity(sessionId=session["id"], authenticated=True, hasDB=session["hasDB"])
-        identify_response = IdentifyResponse(message=f"Welcome back user: {session['id']} !", error="", **identity)
+    if "sessionId" in session and isinstance(session["sessionId"], str):
+        identity = Identity(sessionId=session["sessionId"], authenticated=True, hasDB=session["hasDB"])
+        identify_response = IdentifyResponse(
+            message=f"Welcome back user: {session['sessionId']} !", error="", **identity
+        )
     session.update(identity)
     response = make_response(identify_response, 200)
     return response
@@ -120,13 +122,13 @@ def upload_files() -> Response:
         tuple: Error message and status code if user is not authenticated.
     """
 
-    if "id" not in session:
+    if "sessionId" not in session:
         return make_response({"error": "You have not been authenticated, please identify yourself first."}, 401)
     prefix: str = request.form["prefix"]
     files = {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
-    full_document_dict = sm_app.save_files(files, session["id"])
+    full_document_dict = sm_app.save_files(files, session["sessionId"])
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(sm_app.process_files(full_document_dict, session["id"]))
+    loop.run_until_complete(sm_app.process_files(full_document_dict, session["sessionId"]))
     loop.close()
     response_message = ResponseMessage(
         message=f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!", error=""
@@ -143,12 +145,12 @@ def prompt() -> Response:
     Returns:
         tuple: A tuple containing the response message and the HTTP status code.
     """
-    if "id" not in session:
+    if "sessionId" not in session:
         return make_response({"error": "You have not been authenticated, please identify yourself first."}, 401)
     if request.form is None:
         return make_response({"error": "No form data received"}, 400)
     message = request.form["prompt"]
-    chatbot = Chatbot(session["id"])
+    chatbot = Chatbot(session["sessionId"])
     prompt_response = PromptResponse(
         message="Prompt result is found under the result key.", error="", result=chatbot.send_prompt(message)
     )
