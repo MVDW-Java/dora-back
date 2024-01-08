@@ -83,6 +83,7 @@ class DocumentLoader:
         """
         if "CHUNK_SIZE" in os.environ:
             chunk_size = int(os.environ["CHUNK_SIZE"])
+            self.logger.log(level=INFO, msg=f"Using chunk size of {chunk_size}")
         else:
             self.logger.log(level=INFO, msg="No chunk size specified, defaulting to 1000")
             chunk_size = 1000
