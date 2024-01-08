@@ -24,7 +24,7 @@ app.config["SESSION_COOKIE_SECURE"] = True
 current_env = os.environ.get("CURRENT_ENV", "DEV")
 
 list_of_allowed_origins: list[str] = []
-app.logger.level = logging.INFO
+app.logger.setLevel(logging.INFO)
 match current_env:
     case "DEV":
         CORS(app)
@@ -130,6 +130,7 @@ def upload_files() -> Response:
     loop = asyncio.new_event_loop()
     loop.run_until_complete(sm_app.process_files(full_document_dict, session["sessionId"]))
     loop.close()
+    session["files"] = {file_name: str(file_path) for file_name, file_path in full_document_dict.items()}
     response_message = ResponseMessage(
         message=f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!", error=""
     )
@@ -150,7 +151,10 @@ def prompt() -> Response:
     if request.form is None:
         return make_response({"error": "No form data received"}, 400)
     message = request.form["prompt"]
-    chatbot = Chatbot(session["sessionId"])
+    chatbot = Chatbot(
+        user_id=session["sessionId"],
+        document_dict=session["files"],
+    )
     prompt_response = PromptResponse(
         message="Prompt result is found under the result key.", error="", result=chatbot.send_prompt(message)
     )
