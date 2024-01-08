@@ -1,9 +1,8 @@
 # system imports
-import tempfile
-from pathlib import Path
 import uuid
 import os
 import asyncio
+
 
 import logging
 
@@ -13,12 +12,10 @@ from flask import Flask, request, session, make_response, Response
 from flask_cors import CORS
 
 # local imports
-from chatdoc.doc_loader.document_loader import DocumentLoader
-from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory
-from chatdoc.vector_db import VectorDatabase
-from chatdoc.embed.embedding_factory import EmbeddingFactory
+from serf.methods import ServerMethods
+from serf.class_defs import IdentifyResponse, Identity, ResponseMessage, PromptResponse
 from chatdoc.chatbot import Chatbot
-from chatdoc.utils import Utils
+
 
 app = Flask(__name__)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
@@ -42,26 +39,7 @@ match current_env:
         raise ValueError("Invalid environment variable set for CURRENT_ENV")
 
 app.secret_key = str(uuid.uuid4())
-
-
-async def process_files(document_dict: dict[str, Path], user_id: str) -> None:
-    """
-    Process the files in the given document dictionary and add them to the vector database.
-
-    Args:
-        document_dict (dict[str, Path]): A dictionary mapping document names to their file paths.
-        user_id (str): The ID of the user.
-
-    Returns:
-        None
-    """
-    loader_factory = DocumentLoaderFactory()
-    document_loader = DocumentLoader(document_dict, loader_factory)
-    embedding_fn = EmbeddingFactory().create()
-    vector_db = VectorDatabase(user_id, embedding_fn)
-    documents = document_loader.text_splitter.split_documents(document_loader.document_iterator)
-    app.logger.log(level=logging.INFO, msg="Adding documents to vector database...")
-    await vector_db.add_documents(documents)
+sm_app = ServerMethods(app)
 
 
 @app.errorhandler(ValueError)  # type: ignore
@@ -75,7 +53,8 @@ def handle_value_error(error: ValueError) -> Response:
     Returns:
         Response: A response object containing the error message and status code.
     """
-    return make_response({"error": str(error)}, 400)
+    response_message = ResponseMessage(message="", error=str(error))
+    return make_response(response_message, 400)
 
 
 @app.after_request
@@ -91,9 +70,25 @@ def add_cors_headers(response: Response) -> Response:
     """
     origin = request.headers.get("Origin")
     if origin is None:
-        return make_response({"error": "No origin header found"}, 400)
+        response_message = ResponseMessage(message="", error="No origin header found")
+        return make_response(response_message, 400)
     response.headers["Access-Control-Allow-Origin"] = origin
     response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
+
+
+@app.route("/upload_files", methods=["OPTIONS"])
+@app.route("/prompt", methods=["OPTIONS"])
+def set_post_options() -> Response:
+    """
+    Handles the OPTIONS request for the upload_files route.
+
+    Returns:
+        Response: A response object containing the CORS headers.
+    """
+    response = make_response("OPTIONS OK", 200)
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Methods"] = "POST"
     return response
 
 
@@ -105,32 +100,13 @@ def identify() -> Response:
     Returns:
         dict: A response object containing the sessionId and message.
     """
-    response = {}
+    identity = Identity(sessionId=str(uuid.uuid4()), authenticated=False, hasDB=False)
+    identify_response = IdentifyResponse(message=f"Welcome new user: {session['id']} !", error="", **identity)
     if "id" in session and isinstance(session["id"], str):
-        response["message"] = "Welcome back user: " + session["id"] + "!"
-        response["sessionId"] = session["id"]
-        response["authenticated"] = True
-        response["hasDB"] = session["hasDB"]
-    else:
-        session["id"] = str(uuid.uuid4())
-        session["authenticated"] = True
-        session["hasDB"] = False
-        response["message"] = "Welcome new user: " + session["id"] + "!"
-    response = make_response(response)
-    return response
-
-
-@app.route("/upload_files", methods=["OPTIONS"])
-def upload_files_options() -> Response:
-    """
-    Handles the OPTIONS request for the upload_files route.
-
-    Returns:
-        Response: A response object containing the CORS headers.
-    """
-    response = make_response("OPTIONS OK", 200)
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    response.headers["Access-Control-Allow-Methods"] = "POST"
+        identity = Identity(sessionId=session["id"], authenticated=True, hasDB=session["hasDB"])
+        identify_response = IdentifyResponse(message=f"Welcome back user: {session['id']} !", error="", **identity)
+    session.update(identity)
+    response = make_response(identify_response, 200)
     return response
 
 
@@ -148,34 +124,14 @@ def upload_files() -> Response:
         return make_response({"error": "You have not been authenticated, please identify yourself first."}, 401)
     prefix: str = request.form["prefix"]
     files = {k.lstrip(prefix): v for k, v in request.files.items() if k.startswith(prefix)}
-    dir_path: Path = Path(tempfile.gettempdir()) / Path(str(session["id"]))
-    os.makedirs(dir_path, exist_ok=True)
-    full_document_dict = {}
-    for filename, file in files.items():
-        unique_file_name = Utils.get_unique_filename(filename)
-        unique_file_path = dir_path / Path(unique_file_name)
-        full_document_dict[unique_file_name] = unique_file_path
-        file.save(unique_file_path)
+    full_document_dict = sm_app.save_files(files, session["id"])
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(process_files(full_document_dict, session["id"]))
+    loop.run_until_complete(sm_app.process_files(full_document_dict, session["id"]))
     loop.close()
-    response = make_response(
-        {"message": f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!"}, 200
+    response_message = ResponseMessage(
+        message=f"{str(len(files))} file{'s' if len(files) != 1 else ''} uploaded successfully!", error=""
     )
-    return response
-
-
-@app.route("/prompt", methods=["OPTIONS"])
-def prompt_options() -> Response:
-    """
-    Handles the OPTIONS request for the prompt route.
-
-    Returns:
-        Response: A response object containing the CORS headers.
-    """
-    response = make_response("OPTIONS OK", 200)
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    response.headers["Access-Control-Allow-Methods"] = "POST"
+    response = make_response(response_message, 200)
     return response
 
 
@@ -193,8 +149,10 @@ def prompt() -> Response:
         return make_response({"error": "No form data received"}, 400)
     message = request.form["prompt"]
     chatbot = Chatbot(session["id"])
-    result = chatbot.send_prompt(message)
-    return make_response(result, 200)
+    prompt_response = PromptResponse(
+        message="Prompt result is found under the result key.", error="", result=chatbot.send_prompt(message)
+    )
+    return make_response(prompt_response, 200)
 
 
 if __name__ == "__main__":
