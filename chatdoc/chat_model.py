@@ -41,7 +41,8 @@ class ChatModel:
             case "azureml":
                 if self.api_key is None:
                     self.api_key = Utils.get_env_variable("AZUREML_API_KEY")
-                azure_chat_models = json.load(open("../azure_chat_models.json", "r", encoding="utf-8"))
+                with open("../azure_chat_models.json", "r", encoding="utf-8") as azure_chat_models_file:
+                    azure_chat_models = json.load(azure_chat_models_file)
                 if self.chat_model_name not in azure_chat_models:
                     raise ValueError("Invalid Azure ML chat model name")
                 chat_model_url = azure_chat_models[self.chat_model_name]
