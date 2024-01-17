@@ -1,3 +1,4 @@
+import json
 import requests
 from typing import Any
 import streamlit as st
@@ -28,7 +29,7 @@ class Endpoints:
     @staticmethod
     def upload_files(
         cookie_manager: CookieManager, uploaded_files: list[UploadedFile], session_id: str | None = None
-    ) -> bool:
+    ) -> dict[str, list[str]]:
         if not cookie_manager.ready():
             st.stop()
         prefix = "file_"
@@ -42,6 +43,32 @@ class Endpoints:
         }
         try:
             response = requests.post("http://127.0.0.1:5000/upload_files", data=form_data, files=files_with_prefix)
+            json_response = response.json()
+            if json_response["error"] != "":
+                raise Exception(json_response["error"])
+            response_message = json_response["message"]
+            st.toast(response_message, icon="✅")
+            return json_response["file_id_mapping"]
+        except Exception as err:
+            st.error(err, icon="❌")
+        return {}
+
+    @staticmethod
+    def delete_file(
+        cookie_manager: CookieManager, file_name: str, document_ids: list[str], session_id: str | None = None
+    ) -> bool:
+        if not cookie_manager.ready():
+            st.stop()
+        try:
+            session_id_entry = {"sessionId": session_id} if session_id else {}
+            response = requests.delete(
+                "http://127.0.0.1:5000/delete_file",
+                data={
+                    "filename": file_name,
+                    "documentIds": json.dumps(document_ids),
+                    **session_id_entry,
+                },
+            )
             json_response = response.json()
             if json_response["error"] != "":
                 raise Exception(json_response["error"])

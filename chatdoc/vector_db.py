@@ -119,7 +119,7 @@ class VectorDatabase:
         self.retriever_settings = retriever_settings
         self.retriever = self.chroma_instance.as_retriever(**retriever_settings)
 
-    async def add_documents(self, documents: list[Document]) -> None:
+    async def add_documents(self, documents: list[Document]) -> list[str]:
         """
         Add multiple documents to the vector database.
 
@@ -128,7 +128,27 @@ class VectorDatabase:
                 A list of Document objects to be added when this endpoint is called from `server.py`.
 
         Returns:
+            document_ids (list[str]):
+                A list of document IDs for the documents that were added.
+        """
+        document_ids: list[str] = await self.chroma_instance.aadd_documents(documents)
+        self.chroma_instance.persist()
+        return document_ids
+
+    async def delete_documents(self, document_ids: list[str]) -> bool:
+        """
+        Delete a document from the vector database.
+
+        Args:
+            document_ids (str):
+                A list of document IDs to be deleted
+
+        Returns:
             None
         """
-        await self.chroma_instance.aadd_documents(documents)
-        self.chroma_instance.persist()
+        try:
+            self.chroma_instance.delete(document_ids)
+            self.chroma_instance.persist()
+        except Exception as ChromaError:
+            raise Exception(f"Error deleting document: {ChromaError}")
+        return True
