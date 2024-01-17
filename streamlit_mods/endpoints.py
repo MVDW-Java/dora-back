@@ -1,3 +1,4 @@
+import json
 import requests
 from typing import Any
 import streamlit as st
@@ -6,6 +7,7 @@ from streamlit_cookies_manager import CookieManager
 
 
 Result = tuple[str, list[dict[str, str]], Any]
+
 
 class Endpoints:
     @staticmethod
@@ -25,7 +27,9 @@ class Endpoints:
             st.error(err, icon="❌")
 
     @staticmethod
-    def upload_files(cookie_manager: CookieManager, uploaded_files: list[UploadedFile], session_id: str | None = None) -> bool:
+    def upload_files(
+        cookie_manager: CookieManager, uploaded_files: list[UploadedFile], session_id: str | None = None
+    ) -> dict[str, list[str]]:
         if not cookie_manager.ready():
             st.stop()
         prefix = "file_"
@@ -35,12 +39,36 @@ class Endpoints:
         session_id_entry = {"sessionId": session_id} if session_id else {}
         form_data = {
             **prefix_entry,
-              **session_id_entry,
-                }
+            **session_id_entry,
+        }
         try:
-            response = requests.post("http://127.0.0.1:5000/upload_files", 
-                                     data=form_data,
-                                     files=files_with_prefix)
+            response = requests.post("http://127.0.0.1:5000/upload_files", data=form_data, files=files_with_prefix)
+            json_response = response.json()
+            if json_response["error"] != "":
+                raise Exception(json_response["error"])
+            response_message = json_response["message"]
+            st.toast(response_message, icon="✅")
+            return json_response["file_id_mapping"]
+        except Exception as err:
+            st.error(err, icon="❌")
+        return {}
+
+    @staticmethod
+    def delete_file(
+        cookie_manager: CookieManager, file_name: str, document_ids: list[str], session_id: str | None = None
+    ) -> bool:
+        if not cookie_manager.ready():
+            st.stop()
+        try:
+            session_id_entry = {"sessionId": session_id} if session_id else {}
+            response = requests.delete(
+                "http://127.0.0.1:5000/delete_file",
+                data={
+                    "filename": file_name,
+                    "documentIds": json.dumps(document_ids),
+                    **session_id_entry,
+                },
+            )
             json_response = response.json()
             if json_response["error"] != "":
                 raise Exception(json_response["error"])
@@ -50,7 +78,6 @@ class Endpoints:
         except Exception as err:
             st.error(err, icon="❌")
         return False
-    
 
     @staticmethod
     def prompt(cookie_manager: CookieManager, text_prompt: str, session_id: str | None = None) -> Result | None:
@@ -58,8 +85,7 @@ class Endpoints:
             st.stop()
         try:
             session_id_dict = {"sessionId": session_id} if session_id is not None else {}
-            response = requests.post("http://127.0.0.1:5000/prompt", data={"prompt": text_prompt, 
-                                                                          **session_id_dict })
+            response = requests.post("http://127.0.0.1:5000/prompt", data={"prompt": text_prompt, **session_id_dict})
             json_response = response.json()
             if json_response["error"] != "":
                 st.error(json_response["error"], icon="❌")
@@ -70,4 +96,4 @@ class Endpoints:
             answer = result["answer"]
             return answer, citations, source_docs
         except Exception as err:
-            st.error(err)
+            st.error(err, icon="❌")
