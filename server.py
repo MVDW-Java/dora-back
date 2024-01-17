@@ -1,4 +1,5 @@
 # system imports
+import time
 import uuid
 import os
 import json
@@ -61,15 +62,13 @@ def get_property(property_name: str, with_error=True, property_type: type[Proper
     Returns:
         str: The property value.
     """
-    property_value: str
+    property_value: str = ""
     if property_name in session:
         property_value = session[property_name]
     elif property_name in request.form:
         property_value = request.form[property_name]
     elif with_error:
         raise ValueError(f"No {property_name} found in request.form or session")
-    else:
-        return cast(property_type, None)
     if issubclass(property_type, Basic):
         return cast(property_type, property_value)
     return json.loads(property_value)
@@ -181,13 +180,14 @@ async def upload_files() -> Response:
 
     original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(files, session_id=session_id)
     internal_file_id_mapping = await sm_app.save_files_to_vector_db(full_document_dict, user_id=session_id)
+    time.sleep(1)
     external_file_id_mapping = {
         original_names_dict[filename]: document_ids for filename, document_ids in internal_file_id_mapping.items()
     }
     response_message = UploadResponse(
         message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
         error="",
-        file_id_mapping=external_file_id_mapping,
+        fileIdMapping=external_file_id_mapping,
     )
     response = make_response(response_message, 200)
     return response
@@ -229,6 +229,7 @@ def prompt() -> Response:
         return make_response({"error": "No form data received"}, 400)
     message = request.form["prompt"]
     chatbot = Chatbot(user_id=session_id)
+    chatbot = Chatbot(user_id=session_id)
     prompt_response = PromptResponse(
         message="Prompt result is found under the result key.", error="", result=chatbot.send_prompt(message)
     )
@@ -246,7 +247,7 @@ def clear_chat_history() -> Response:
     session_id = str(get_property("sessionId"))
     memory_db = SQLChatMessageHistory(session_id, "sqlite:///chat_history.db")
     memory_db.clear()
-    response_message = ResponseMessage(message="Chat history succesvol gewist!", error="")
+    response_message = ResponseMessage(message="Chatgeschiedenis succesvol gewist!", error="")
     return make_response(response_message, 200)
 
 

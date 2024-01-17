@@ -22,8 +22,7 @@ class Sidebar:
                     self.initialize_file_downloader(files)
             st.button(
                 "Wis chatgeschiedenis",
-                on_click=self.message_helper.clear_chat_history,
-                args=(self.session_state_helper.sessionId,),
+                on_click=self.session_state_helper.clear_chat_history,
             )
 
     def initialize_file_uploader(self) -> list[UploadedFile] | None:
@@ -42,7 +41,7 @@ class Sidebar:
             type=["pdf", "docx", "doc", "txt"],
             accept_multiple_files=True,
             key=self.session_state_helper.file_uploader_key,
-            on_change=self.on_file_remove,
+            on_change=self.session_state_helper.on_file_remove,
         ):
             unique_files = self.file_helper.save_files(uploaded_files)
             self.file_helper.upload_files()
