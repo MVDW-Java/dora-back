@@ -40,6 +40,8 @@ Please configure the values in the Dockerfile before proceeding.
 
 Build the Docker container using `docker build . -t <image_name> --build-args OPENAI_API_KEY=<openai_api_key>`. The `--build-args` are optional.
 
-Run the Docker container using `docker run --name <container_name> <image_name>`.
+Run the Docker container using `docker run --name <container_name> <image_name> \
+-e <environment_variable>=<value> \
+-e <environment_variable>=<value>` etc.
 
 
