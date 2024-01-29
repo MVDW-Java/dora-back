@@ -1,7 +1,9 @@
 # dora-back
 The backend for Dora
 
-## How to install the dependencies
+## Run using Poetry and Python
+
+### How to install the dependencies
 Either clone this project in VSCode or open a new codespace (if you have not been invited into another one).
 
 The `devcontainer.json` should contain all the plugins needed to get going including the installation of Poetry (which may need to be done manually).
@@ -14,7 +16,7 @@ Subsequently, run `poetry update` in the terminal to install all the dependencie
 
 Set the `CMAKE_ARGS` environment variable according to the [llama-cpp-python documentation](https://pypi.org/project/llama-cpp-python)
 
-## Run the Flask server for the endpoints
+### Run the Flask server for the endpoints
 
 Make sure to set all the environment variables like:
 
@@ -28,6 +30,16 @@ Make sure to set all the environment variables like:
 
 Then run `poetry run flask --app server run`
 
-## Run the Streamlit app
+### Run the Streamlit app
 
 Run `poetry run streamlit st_app.py` 
+
+## Run Flask server using Docker container
+
+Please configure the values in the Dockerfile before proceeding.
+
+Build the Docker container using `docker build . -t <image_name> --build-args OPENAI_API_KEY=<openai_api_key>`. The `--build-args` are optional.
+
+Run the Docker container using `docker run --name <container_name> <image_name>`.
+
+
