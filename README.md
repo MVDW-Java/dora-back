@@ -24,7 +24,7 @@ Make sure to set all the environment variables like:
 - `CHAT_MODEL_NAME`: the name of the chat model (e.g. gpt-turbo-3.5)
 - `EMBEDDING_MODEL_VENDOR_NAME`: the name of the embeddings model vendor [openai, local, huggingface]
 - `EMBEDDING_MODEL_NAME`: the name of the embeddings model (e.g. text-embedding-ada-002)
-- `DORA_ENV`: the current environment [DEV, TST, PROD]
+- `CURRENT_ENV`: the current environment [DEV, TST, PROD]
 - `CHAT_MODEL_FOLDER_PATH`: the path to the folder of local chat models
 - `EMBEDDING_MODEL_FOLDER_PATH`: the path to the folder of local embedding models
 
@@ -40,16 +40,17 @@ Please configure the values in the Dockerfile before proceeding.
 
 Build the Docker container using 
 ```bash
-docker build . -t <image_name> --build-args OPENAI_API_KEY=<openai_api_key>
+docker build -t dora-back --build-args OPENAI_API_KEY=<openai_api_key> .
 ```
-The `--build-args` are optional.
+The `--build-args` are needed to provide options for local models or API keys.
 
 Run the Docker container using:
 ```bash
-docker run --name <container_name> <image_name> \
+docker run --name <container_name> -p 5000:5000 dora-back \
 -e <environment_variable>=<value> \
 -e <environment_variable>=<value>
 ```
+You can access the server at localhost:5000.
 Overriding the default values for the environment variables is optional.
 
 
