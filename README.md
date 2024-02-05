@@ -1,6 +1,8 @@
 # dora-back
 The backend for Dora
 
+For deployment at SBP: please have a look at the [README.md](https://github.com/Iodine98/dora-streamlit#dora-streamlit) on `dora-streamlit`.
+
 ## Run using Poetry and Python
 
 ### How to install the dependencies
@@ -27,6 +29,18 @@ Make sure to set all the environment variables like:
 - `CURRENT_ENV`: the current environment [DEV, TST, PROD]
 - `CHAT_MODEL_FOLDER_PATH`: the path to the folder of local chat models
 - `EMBEDDING_MODEL_FOLDER_PATH`: the path to the folder of local embedding models
+- `OPENAI_API_KEY`: an OpenAI API key to use an OpenAI model specified in `CHAT_MODEL_NAME`
+- `CURRENT_ENV`: the current environment for the Flask server; defaults to `DEV`
+- `CHUNK_SIZE`: the chunk size in which to partition the chunks from the text extracted from documents; defaults to `512` tokens.
+- `TOP_K_DOCUMENTS`: retrieve the top-k documents; defaults to the top-`5` documents.
+- `MINIMUM_ACCURACY`: the minimum accuracy for the retrieved documents (i.e. chunks of text); defaults to `0.80`
+- `FETCH_K_DOCUMENTS`: fetch `k`-number of documents (only applies if `STRATEGY=mmr`); defaults to `100`
+- `LAMBDA_MULT`: Lambda-multiplier, the lower this number (between 0 and 1) the more diverse the documents ought to be, the higher the less diverse the document selection is; defaults to `0.2`
+- `STRATEGY`: the document ranking strategy to use; for example `similarity`, `similarity_score_threshold` or `mmr` (default)
+- `LAST_N_MESSAGES`: the last n messages to include from the chat history; defaults to `5`.
+- `CHAT_MODEL_FOLDER_PATH`: the folder path to store LOCAL chat models in.
+- `SENTENCE_TRANSFORMERS_HOME`: the folder path to store LOCAL embedding models in.
+- `CHAT_HISTORY_CONNECTION_STRING`: an SQL-connection string pointing towards a SQL-DB where chat history can be stored in. The schema will automatically be created in the database mentioned in the SQL-connection string
 
 Then run `poetry run flask --app server run`
 
@@ -42,7 +56,7 @@ Build the Docker container using
 ```bash
 docker build -t dora-backend --build-args OPENAI_API_KEY=<openai_api_key> .
 ```
-The `--build-args` are needed to provide options for local models or API keys.
+The `--build-args` are needed to provide options for local models or API keys. **Please have a look at the Dockerfile** to familiarize yourself with any defaults.
 
 Run the Docker container using:
 ```bash
