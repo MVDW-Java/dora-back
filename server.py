@@ -41,6 +41,7 @@ app.secret_key = str(uuid.uuid4())
 sm_app = ServerMethods(app)
 
 
+
 Basic = str | int | float | bool
 Property = Basic | dict | tuple | list
 
