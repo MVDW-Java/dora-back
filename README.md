@@ -54,9 +54,9 @@ Please configure the values in the Dockerfile before proceeding.
 
 Build the Docker container using 
 ```bash
-docker build -t dora-backend --build-args OPENAI_API_KEY=<openai_api_key> .
+docker build -t dora-backend --build-arg OPENAI_API_KEY=<openai_api_key> .
 ```
-The `--build-args` are needed to provide options for local models or API keys. **Please have a look at the Dockerfile** to familiarize yourself with any defaults.
+The `--build-arg` are needed to provide options for local models or API keys. **Please have a look at the Dockerfile** to familiarize yourself with any defaults.
 
 Run the Docker container using:
 ```bash
