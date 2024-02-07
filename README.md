@@ -1,7 +1,7 @@
 # dora-back
 The backend for Dora
 
-For deployment at SBP: please have a look at the [README.md](https://github.com/Iodine98/dora-streamlit#dora-streamlit) on `dora-streamlit`.
+For deployment at SBP: please have a look at the [README.md](https://github.com/Iodine98/dora-streamlit#dora-streamlit) on `dora-streamlit`. Deploy this project in two different environments: one where the `dora-backend` service is based on the `main` branch and another where the `dora-backend` service is based on the `research-experiment` branch.
 
 ## Run using Poetry and Python
 
