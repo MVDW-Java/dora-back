@@ -5,7 +5,7 @@ from typing import Iterator
 from tqdm.auto import tqdm
 import os
 
-from langchain.text_splitter import TokenTextSplitter, TextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
 from langchain.schema import Document
 
 from chatdoc.doc_loader.document_loader_factory import DocumentLoaderFactory, BaseLoader
@@ -92,4 +92,10 @@ class DocumentLoader:
         else:
             self.logger.log(level=INFO, msg="No chunk size specified, defaulting to 1000")
             chunk_size = 1000
-        return TokenTextSplitter(chunk_size=chunk_size, chunk_overlap=0, disallowed_special=())
+        if "CHUNK_OVERLAP" in os.environ:
+            chunk_overlap = int(os.environ["CHUNK_OVERLAP"])
+            self.logger.log(level=INFO, msg=f"Using chunk overlap of {chunk_overlap} tokens")
+        else:
+            self.logger.log(level=INFO, msg="No chunk overlap specified, defaulting to 0")
+            chunk_overlap = 0
+        return RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
