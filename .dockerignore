@@ -1,6 +1,7 @@
 models
 chroma
 chat_history.db
+final_answer.db
 poetry.lock
 .env
 __pycache__
