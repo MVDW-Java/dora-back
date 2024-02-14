@@ -31,7 +31,7 @@ match current_env:
     case "DEV":
         CORS(app)
         app.logger.info(msg="Running in development mode")
-    case "PROD":
+    case "TST" | "PROD":
         app.logger.info(msg="Running in production mode")
     case _:
         raise ValueError("Invalid environment variable set for CURRENT_ENV")
