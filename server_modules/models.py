@@ -5,14 +5,11 @@ from sqlalchemy.orm import DeclarativeBase
 
 from chatdoc.utils import Utils
 
-
 class Base(DeclarativeBase):
     __abstract__ = True
 
-
 class SecondBase(DeclarativeBase):
     __abstract__ = True
-
 
 class ChatHistoryModel(SecondBase):
     __tablename__ = "message_store"
@@ -28,13 +25,16 @@ class FinalAnswerModel(Base):
     end_time = Column(DateTime)
     number_of_messages = Column(Integer, default=-1)
     original_answer = Column(JSON)
-    final_answer = Column(JSON)
+    edited_answer = Column(JSON)
 
     def __repr__(self) -> str:
-        return f"FinalAnswer(session_id={self.session_id}, original_answer={json.dumps(self.original_answer)} final_answer={json.dumps(self.final_answer)}, start_time={self.start_time}, end_time={self.end_time})"
+        return f"FinalAnswer(session_id={self.session_id}, original_answer={json.dumps(self.original_answer)}, edited_answer={json.dumps(self.edited_answer)}, start_time={self.start_time}, end_time={self.end_time})"
 
 
 def add_new_record(new_session_id: str) -> None:
+    """
+    Add a new record to the final_answer table when the user starts a new session
+    """
     db_engine = sqlalchemy.create_engine(
         Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
     )
@@ -45,20 +45,20 @@ def add_new_record(new_session_id: str) -> None:
         FinalAnswerModel.session_id == new_session_id
     )  # SELECT * FROM final_answer WHERE session_id = session_id
     insertion_stmt = sqlalchemy.insert(FinalAnswerModel).values(
-        session_id=new_session_id, start_time=sqlalchemy.func.now()
-    )  # INSERT INTO final_answer (session_id, final_answer) VALUES (session_id, start_time)
+        session_id=new_session_id,
+        start_time=sqlalchemy.func.now(),  # pylint: disable=not-callable
+    )  # pylint: disable=not-callable
     update_stmt = (
         sqlalchemy.update(FinalAnswerModel)
         .where(FinalAnswerModel.session_id == new_session_id)
         .values(
-            start_time=sqlalchemy.func.now(),
-            final_answer={},
+            start_time=sqlalchemy.func.now(),  # pylint: disable=not-callable
             original_answer={},
+            edited_answer={},
             end_time=None,
             number_of_messages=-1,
         )
-    )
-
+    )  # INSERT INTO final_answer (session_id, original_answer, edited_answer) VALUES (session_id, original_answer, edited_answer)
     with db_engine.connect() as connection:
         answer_model_record = connection.execute(answer_model_record_query)
         if not answer_model_record.fetchone():
@@ -69,8 +69,11 @@ def add_new_record(new_session_id: str) -> None:
 
 
 def update_record_with_answers(
-    session_id: str, original_answer: dict, final_answer: dict
+    session_id: str, original_answer: dict, edited_answer: dict
 ) -> None:
+    """
+    Update the final_answer table with the original and edited answers
+    """
     db_final_answer_engine = sqlalchemy.create_engine(
         Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
     )
@@ -81,11 +84,11 @@ def update_record_with_answers(
         sqlalchemy.update(FinalAnswerModel)
         .where(FinalAnswerModel.session_id == session_id)
         .values(
-            final_answer=final_answer,
             original_answer=original_answer,
-            end_time=sqlalchemy.func.now(),
+            edited_answer=edited_answer,
+            end_time=sqlalchemy.func.now(),  # pylint: disable=not-callable
         )
-    )  # INSERT INTO final_answer (session_id, final_answer) VALUES (session_id, final_answer)
+    )  # UPDATE final_answer SET original_answer = original_answer, edited_answer = edited_answer, end_time = NOW() WHERE session_id = session_id
     with db_final_answer_engine.connect() as connection:
         answer_model_record = connection.execute(answer_model_record_query)
         if not answer_model_record.fetchone():
@@ -95,9 +98,9 @@ def update_record_with_answers(
     db_chat_history_engine = sqlalchemy.create_engine(
         Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
     )
-    count_stmt = sqlalchemy.select(sqlalchemy.func.count(ChatHistoryModel.id)).where(
-        ChatHistoryModel.session_id == session_id
-    )
+    count_stmt = sqlalchemy.select(
+        sqlalchemy.func.count(ChatHistoryModel.id)  # pylint: disable=not-callable
+    ).where(ChatHistoryModel.session_id == session_id)
     with db_chat_history_engine.connect() as connection:
         number_of_messages = connection.execute(count_stmt).scalar()
         if number_of_messages is None:
@@ -110,3 +113,5 @@ def update_record_with_answers(
     with db_final_answer_engine.connect() as connection:
         connection.execute(update_message_count)
         connection.commit()
+
+
