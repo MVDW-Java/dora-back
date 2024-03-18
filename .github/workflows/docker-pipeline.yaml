@@ -44,16 +44,12 @@ jobs:
       - name: Docker Compose Config
         run: |
           docker compose config -o docker-compose-filled.yml
-      - name: Run Docker Compose        
+      - name: Run Docker Compose
         uses: isbang/compose-action@v1.5.1
         with:
           compose-file: docker-compose-filled.yml
           up-flags: "--detach"
+          down-flags: "--timeout 30"
       - name: Check Running Containers
         run: |
           docker ps -a
-
-            
-
-
-      
