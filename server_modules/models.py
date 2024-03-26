@@ -1,15 +1,19 @@
 import json
+import logging
 from sqlalchemy import JSON, Column, Integer, String, DateTime
 import sqlalchemy
 from sqlalchemy.orm import DeclarativeBase
 
 from chatdoc.utils import Utils
 
+
 class Base(DeclarativeBase):
     __abstract__ = True
 
+
 class SecondBase(DeclarativeBase):
     __abstract__ = True
+
 
 class ChatHistoryModel(SecondBase):
     __tablename__ = "message_store"
@@ -31,10 +35,11 @@ class FinalAnswerModel(Base):
         return f"FinalAnswer(session_id={self.session_id}, original_answer={json.dumps(self.original_answer)}, edited_answer={json.dumps(self.edited_answer)}, start_time={self.start_time}, end_time={self.end_time})"
 
 
-def add_new_record(new_session_id: str) -> None:
+def add_new_record(new_session_id: str, logger: logging.Logger) -> None:
     """
     Add a new record to the final_answer table when the user starts a new session
     """
+    logger.info(f"Adding new record for session id: {new_session_id}")
     db_engine = sqlalchemy.create_engine(
         Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
     )
@@ -69,7 +74,7 @@ def add_new_record(new_session_id: str) -> None:
 
 
 def update_record_with_answers(
-    session_id: str, original_answer: dict, edited_answer: dict
+    session_id: str, original_answer: dict, edited_answer: dict, logger: logging.Logger
 ) -> None:
     """
     Update the final_answer table with the original and edited answers
@@ -77,6 +82,7 @@ def update_record_with_answers(
     db_final_answer_engine = sqlalchemy.create_engine(
         Utils.get_env_variable("FINAL_ANSWER_CONNECTION_STRING")
     )
+    logger.info(f"Updating final answer for session_id: {session_id}")
     answer_model_record_query = sqlalchemy.select(FinalAnswerModel).where(
         FinalAnswerModel.session_id == session_id
     )  # SELECT * FROM final_answer WHERE session_id = session_id
@@ -92,11 +98,11 @@ def update_record_with_answers(
     with db_final_answer_engine.connect() as connection:
         answer_model_record = connection.execute(answer_model_record_query)
         if not answer_model_record.fetchone():
-            raise ValueError(f"No record found for session_id: {session_id}")
+          raise ValueError(f"No record found for session_id: {session_id}")
         connection.execute(update_stmt)
         connection.commit()
     db_chat_history_engine = sqlalchemy.create_engine(
-        Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
+         Utils.get_env_variable("CHAT_HISTORY_CONNECTION_STRING")
     )
     count_stmt = sqlalchemy.select(
         sqlalchemy.func.count(ChatHistoryModel.id)  # pylint: disable=not-callable
@@ -113,5 +119,3 @@ def update_record_with_answers(
     with db_final_answer_engine.connect() as connection:
         connection.execute(update_message_count)
         connection.commit()
-
-

@@ -79,11 +79,11 @@ def get_property(
         property_value = request.form[property_name]
     elif (json_payload := request.json) is not None:
         if isinstance(json_payload, dict) and property_name in json_payload:
-            property_value = json_payload[property_name]
+            property_value = json.dumps(json_payload[property_name], ensure_ascii=False)
         elif isinstance(json_payload, list):
             for item in json_payload:
                 if isinstance(item, dict) and property_name in item:
-                    property_value = item[property_name]
+                    property_value = json.dumps(item[property_name], ensure_ascii=False)
                     break
             else:
                 if with_error:
@@ -92,6 +92,8 @@ def get_property(
         raise ValueError(
             f"No {property_name} found in request.form, session, or request.json"
         )
+    if property_type == str:
+        return str(property_value).replace("\"", "")
     if issubclass(property_type, Basic):
         return cast(property_type, property_value)
     return json.loads(property_value)
@@ -162,7 +164,7 @@ def root() -> Response:
     return make_response("<h1>Welcome to our server !!</h1>", 200)
 
 
-@app.route("/identify", methods=["GET"])
+@app.route("/identify", methods=["POST"])
 def identify() -> Response:
     """
     Identifies the user and returns a response object.
@@ -188,7 +190,7 @@ def identify() -> Response:
         identify_response = IdentifyResponse(
             message=f"Welcome new user: {identity['sessionId']} !", error="", **identity
         )
-    add_new_record(identity["sessionId"])
+    add_new_record(identity["sessionId"], app.logger)
     session.update(identity)
     response = make_response(identify_response, 200)
     return response
@@ -390,28 +392,17 @@ def submit_final_answer() -> Response:
     Returns:
         tuple: A tuple containing the response message and the HTTP status code.
     """
-    session_id = str(get_property("sessionId"))
+    session_id = get_property("sessionId")
     original_answer = get_property("originalAnswer", property_type=dict)
     edited_answer = get_property("editedAnswer", property_type=dict)
     update_record_with_answers(
-        session_id, original_answer=original_answer, edited_answer=edited_answer
+        session_id,
+        original_answer=original_answer,
+        edited_answer=edited_answer,
+        logger=app.logger,
     )
     response_message = ResponseMessage(
         message="Final answer successfully submitted!", error=""
-    )
-    return make_response(response_message, 200)
-
-
-@app.route("/clock-out-cg", methods=["POST"])
-def clock_out_cg() -> Response:
-    """
-    This function registers the end time of the experiment for the control group
-    """
-    session_id = str(get_property("sessionId"))
-    edited_answer = get_property("editedAnswer", property_type=dict)
-    update_record_with_answers(session_id, original_answer={}, edited_answer=edited_answer)
-    response_message = ResponseMessage(
-        message="Control Group member has been clocked out successfully!", error=""
     )
     return make_response(response_message, 200)
 
