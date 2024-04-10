@@ -301,7 +301,7 @@ async def upload_files() -> Response:
     return response
 
 
-@app.route("/delete_file", methods=["DELETE"])
+@app.route("/delete_file", methods=["DELETE", "POST"])
 async def delete_file() -> Response:
     """
     Deletes a file from the server.
