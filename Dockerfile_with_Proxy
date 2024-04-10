@@ -11,6 +11,7 @@ ARG HTTP_PROXY
 ARG HTTPS_PROXY
 
 # Set Poetry environment variables
+ENV REQUEST_CA_BUNDLE="/app/ca-certificates.crt"
 ENV POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
     POETRY_NO_INTERACTION=1 \
@@ -19,8 +20,11 @@ ENV POETRY_HOME="/opt/poetry" \
 ENV PATH="$PATH:$POETRY_HOME/bin"
 ENV HTTP_PROXY=$HTTP_PROXY
 
+COPY ./ca-certificates.crt  /app/
+
 # Install Poetry
 RUN pip config set global.proxy ${HTTP_PROXY}
+
 RUN pip install poetry
 
 # Install necessary dependencies
