@@ -4,11 +4,13 @@ import io
 import time
 import uuid
 import json
+from tqdm.auto import tqdm
 from typing import Any, cast
 
 # third party imports
 from flask import Flask, request, session, make_response, Response
 from flask_cors import CORS
+from flask_executor import Executor
 from langchain_core.messages.base import messages_to_dict
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 from werkzeug.datastructures import FileStorage
@@ -21,7 +23,6 @@ from server_modules.class_defs import (
     Identity,
     ResponseMessage,
     PromptResponse,
-    UploadResponse,
     ChatHistoryResponse,
     WEMUploadResponse,
     SessionQueryResponse,	
@@ -37,6 +38,7 @@ app = Flask(__name__)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = True
 
+
 current_env = Utils.get_env_variable("CURRENT_ENV")
 match current_env:
     case "DEV":
@@ -51,7 +53,7 @@ match current_env:
 
 app.secret_key = str(uuid.uuid4())
 sm_app = ServerMethods(app)
-
+executor = Executor(app)
 
 Basic = str | int | float | bool
 Property = Basic | dict | tuple | list
@@ -196,8 +198,38 @@ def identify() -> Response:
     return response
 
 
+async def process_files(files: dict, session_id: str) -> WEMUploadResponse:
+    """
+    Processes the files and returns a response object.
+
+    Args:
+        files (dict): The files to process.
+        session_id (str): The session ID.
+
+    Returns:
+        dict: A response object containing the message and error.
+    """
+    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
+        files, session_id=session_id
+    )
+    internal_file_id_mapping = await sm_app.save_files_to_vector_db(
+        full_document_dict, user_id=session_id
+    )
+    time.sleep(1)
+    external_file_id_mapping = [
+        {"filename": original_names_dict[filename], "documentIds": document_ids}
+        for filename, document_ids in internal_file_id_mapping.items()
+    ]
+    response_message = WEMUploadResponse(
+        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
+        error="",
+        fileIdMapping=external_file_id_mapping,
+    )
+    return response_message
+
+
 @app.route("/upload_files_json", methods=["POST"])
-async def upload_files_json() -> Response:
+def upload_files_json() -> Response:
     """
     Uploads files to the server.
 
@@ -225,33 +257,43 @@ async def upload_files_json() -> Response:
 
     json_payload = cast(list, request.json)
     files = {}
+    prefix: str = ""
     session_id: str | None = None
-    for file_dict in json_payload:
+    for file_dict in tqdm(json_payload, desc="Extract files from payload"):
         session_id = file_dict["sessionId"] if session_id is None else session_id
-        prefix: str = get_prefix()
+        prefix = get_prefix()
         files = {**files, **get_files()}
 
     if session_id is None:
         raise ValueError("No session ID found in request.json")
 
-    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
-        files, session_id=session_id
-    )
-    internal_file_id_mapping = await sm_app.save_files_to_vector_db(
-        full_document_dict, user_id=session_id
-    )
-    time.sleep(1)
-    external_file_id_mapping = [
-        {"filename": original_names_dict[filename], "documentIds": document_ids}
-        for filename, document_ids in internal_file_id_mapping.items()
-    ]
-    response_message = WEMUploadResponse(
-        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
+    executor.submit_stored("process_files", process_files, files, session_id)
+    response_message = ResponseMessage(
+        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} geüpload!",
         error="",
-        fileIdMapping=external_file_id_mapping,
     )
     response = make_response(response_message, 200)
     return response
+
+@app.route("/get_file_id_mappings", methods=["GET"])
+def get_file_id_mappings() -> Response:
+    """
+    Gets the file ID mappings.
+    """
+    response_message: WEMUploadResponse
+    process_files_state = executor.futures._state("process_files")
+    app.logger.info("process_files_state: %s", process_files_state)
+    if not executor.futures.done("process_files"):
+        response_message = WEMUploadResponse(
+            message=str(process_files_state),
+            error="",
+            fileIdMapping=[],
+        )
+        return make_response(response_message, 202)
+    future = executor.futures.pop("process_files")
+    response_message = future.result()
+    return make_response(response_message, 200)
+
 
 
 @app.route("/upload_files", methods=["POST"])
@@ -281,21 +323,10 @@ async def upload_files() -> Response:
     prefix: str = get_prefix()
     files = get_files()
 
-    original_names_dict, full_document_dict = await sm_app.save_files_to_tmp(
-        files, session_id=session_id
-    )
-    internal_file_id_mapping = await sm_app.save_files_to_vector_db(
-        full_document_dict, user_id=session_id
-    )
-    time.sleep(1)
-    external_file_id_mapping = {
-        original_names_dict[filename]: document_ids
-        for filename, document_ids in internal_file_id_mapping.items()
-    }
-    response_message = UploadResponse(
-        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} succesvol geüpload!",
+    executor.submit_stored("process_files", process_files, files, session_id)
+    response_message = ResponseMessage(
+        message=f"{str(len(files))} bestand{'en' if len(files) != 1 else ''} geüpload!",
         error="",
-        fileIdMapping=external_file_id_mapping,
     )
     response = make_response(response_message, 200)
     return response
