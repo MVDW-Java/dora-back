@@ -65,7 +65,7 @@ The `--build-arg` are needed to provide options for local models or API keys. **
 
 Run the Docker container using:
 ```bash
-docker run --name <container_name> -p 5000:5000 dora-back \
+docker run --name <container_name> -p 5000:8000 dora-back \
 -e <environment_variable>=<value> \
 -e <environment_variable>=<value>
 ```
