@@ -8,7 +8,8 @@ from tqdm.auto import tqdm
 from typing import Any, cast
 
 # third party imports
-from flask import Flask, request, session, make_response, Response
+from flask import Flask, request, session, make_response, Response, render_template
+from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from flask_executor import Executor
 from langchain_core.messages.base import messages_to_dict
@@ -37,7 +38,8 @@ set_logging_config(Utils.get_env_variable("LOGGING_FILE_PATH"))
 app = Flask(__name__)
 app.config["SESSION_COOKIE_SAMESITE"] = "None"
 app.config["SESSION_COOKIE_SECURE"] = True
-
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
 
 current_env = Utils.get_env_variable("CURRENT_ENV")
 match current_env:
@@ -161,9 +163,9 @@ def set_post_options() -> Response:
 @app.route("/", methods=["GET"])
 def root() -> Response:
     """
-    Returns a generic welcome for Gunicorn to load
+    Returns a chat template for testing
     """
-    return make_response("<h1>Welcome to our server !!</h1>", 200)
+    return render_template("chat.html")
 
 
 @app.route("/identify", methods=["POST"])
@@ -453,7 +455,49 @@ def get_sessions() -> Response:
     )
     return make_response(response_message, 200)
 
+chat_history = [
+    {
+        "author": "assistant",
+        "content": "Hello, I'm DoRA! How can I help you?",
+        "attachments": []
+    },
+    {
+        "author": "user",
+        "content": "hey dora, can you help me with someting?",
+        "attachments": []
+    },
+    {
+        "author": "assistant",
+        "content": "Ofcourse, how can I help you?",
+        "attachments": []
+    },
+]
+
+
+@socketio.event
+def get_history(message):
+    emit('get_history', chat_history)
+
+@socketio.event
+def chat_send(message):
+    chat_history.append(message)
+
+    chatobj = {
+        "author": "assistant",
+        "content": "INTERNAL_TYPING",
+        "attachments": []
+    }
+    emit('chat_recieve', chatobj)
+    chatobj["content"] = message["content"]
+
+    socketio.sleep(2)
+    
+    emit('chat_recieve', chatobj)
+    chat_history.append(chatobj)
+
+
+
 
 if __name__ == "__main__":
     # Threaded option to enable multiple instances for multiple user access support
-    app.run(threaded=True, port=5000)
+    socketio.run(app, cors_allowed_orgins="*", threaded=True, port=5000)
