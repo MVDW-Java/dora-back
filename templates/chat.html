@@ -20,22 +20,43 @@
         height: 100%;
         background: #f3f3f3;
         margin-bottom: 2rem;
+        position: relative;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    #loader {
+        z-index: 1000;
+        width: 100%;
+        height: 100%;
+        background: rgba(102, 175, 233, 0.52);
+        position: absolute;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+    }
+
+    #loading-message {
+        color: #015782;
     }
 
     #chat {
-        height: calc(100% - 6.75rem - 10rem);
+        height: calc(100% - 8.5rem);
         overflow-x: hidden;
         overflow-y: auto;
         overflow-anchor: auto;
-        padding: 0rem 2rem;
+        padding: 0rem 4rem;
     }
 
     #bottom {
         background: #d2d2d2;
-        width: calc(100% - 3rem);
+        width: calc(100% - 4rem);
         position: absolute;
         padding: 1rem;
         border-radius: 3rem;
+        margin: 0rem 2rem;
     }
 
     #chat-input {
@@ -195,7 +216,7 @@
         border-radius: 2rem 2rem 0rem 2rem;
     }
 
-    .chat-typing {
+    .chat-typing, .loading {
         background: #f00;
         background: #015782;
         height: 2rem;
@@ -209,7 +230,7 @@
         animation-delay: 0ms;
     }
 
-    .chat-typing::before {
+    .chat-typing::before, .loading::before {
         content: "";
         position: absolute;
         background: #015782;
@@ -222,7 +243,7 @@
         animation-delay: -666ms;
     }
 
-    .chat-typing::after {
+    .chat-typing::after, .loading::after {
         content: "";
         position: absolute;
         background: #015782;
@@ -288,6 +309,11 @@
     }
 </style>
 <div id="window">
+    <div id="loader">
+        <div class="loading"></div>
+        <div id="loading-message">Verbinding maken met DoRA service...</div>
+    </div>
+
     <input type="file" id="attachment" style="opacity:0; height:0px;width:0px;" />
     <div id="chat"></div>
 
@@ -324,12 +350,14 @@
     const el_btn_attachment = document.getElementById("chat-attachment");
     const el_btn_send = document.getElementById("chat-send");
     const el_bottom = document.getElementById("bottom");
+    const el_loading_msg = document.getElementById("loading-message");
     const el_input_alert = document.getElementById("chat-input-alert");
     const el_input_uploads = document.getElementById("chat-input-uploads");
     const el_input_uploads_attachment = document.getElementById("chat-input-uploads-attachment");
     const el_attachment_name = document.getElementById("attachment-name");
     const el_char_count = document.getElementById("char-count");
     const el_chat_window = document.getElementById("chat");
+    const el_loader = document.getElementById("loader");
 
     var presses_shift = false;
     var ai_is_generating = false;
@@ -342,6 +370,7 @@
     var chat_socket = io();
 
     chat_socket.on('connect', function () {
+        el_loading_msg.innerText = "Verbinding maken met DoRA...";
 
         console.log("DoRA conected to server")
 
@@ -351,6 +380,8 @@
     chat_socket.on('get_history', function (data) {
 
         for (let i = 0; i < data.length; i++) createChat(data[i]);
+
+        el_loader.style.display = "none";
     });
 
     chat_socket.on('chat_recieve', function (data) {
@@ -359,11 +390,15 @@
     });
 
     chat_socket.on("connect_error", function () {
+        el_loading_msg.innerText = "Kan geen verbinding maken met DoRA service";
         console.error("Can't connect to DoRA servers")
+        el_loader.style.display = "flex";
     });
 
     chat_socket.on("disconnect", function () {
+        el_loading_msg.innerText = "Verbinding verbroken met DoRA service";
         console.warn("disconnected from DoRA servers")
+        el_loader.style.display = "flex";
     });
 
 
